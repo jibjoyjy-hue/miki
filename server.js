@@ -21,19 +21,74 @@ const body = (req, cb) => {
 http.createServer((req, res) => {
   const url = req.url.split('?')[0];
 
-  if (url === '/api/requests' && req.method === 'GET') return send(res, 200, read('requests'));
+  if (url === '/api/requests' && req.method === 'GET') {
+    const list = read('requests').map((r, i) => ({
+      id: r.id || (Date.parse(r.time) ? Date.parse(r.time) + i : i + 1),
+      name: r.name,
+      time: r.time || new Date().toISOString(),
+      status: r.status || 'pending'
+    }));
+    return send(res, 200, list);
+  }
 
   if (url === '/api/requests' && req.method === 'POST') {
     return body(req, (j) => {
       const name = String((j && j.name) || '').trim().slice(0, 60);
       if (!name) return send(res, 400, { error: 'name required' });
       const list = read('requests');
-      const last = list[list.length - 1];
-      if (last && last.name === name && Date.now() - new Date(last.time).getTime() < 15000)
-        return send(res, 201, { ok: true, duplicate: true });
-      list.push({ name, time: new Date().toISOString() });
+      const existing = list.find(x => x.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        if (!existing.id) existing.id = Date.now();
+        if (!existing.status) existing.status = 'pending';
+        write('requests', list);
+        return send(res, 200, { ok: true, existing: true, status: existing.status, id: existing.id });
+      }
+      const item = { id: Date.now(), name, status: 'pending', time: new Date().toISOString() };
+      list.push(item);
       write('requests', list);
-      send(res, 201, { ok: true });
+      send(res, 201, { ok: true, status: 'pending', id: item.id });
+    });
+  }
+
+  if (url === '/api/requests/decide' && req.method === 'POST') {
+    return body(req, (j) => {
+      const status = j && j.status;
+      if (status !== 'approved' && status !== 'rejected') return send(res, 400, { error: 'bad status' });
+      const list = read('requests');
+      const targetId = j && j.id;
+      const targetName = j && j.name;
+      const r = list.find(x => (targetId && String(x.id) === String(targetId)) || (targetName && x.name === targetName));
+      if (!r) return send(res, 404, { error: 'not found' });
+      r.status = status;
+      if (!r.id && targetId) r.id = Number(targetId) || targetId;
+      r.decidedAt = new Date().toISOString();
+      write('requests', list);
+      return send(res, 200, { ok: true, request: r });
+    });
+  }
+
+  if (url === '/api/requests/check' && req.method === 'GET') {
+    const name = new URL(req.url, 'http://x').searchParams.get('name') || '';
+    const list = read('requests');
+    const r = list.find(x => x.name.toLowerCase() === name.toLowerCase().trim());
+    if (!r) return send(res, 200, { exists: false });
+    return send(res, 200, { exists: true, status: r.status || 'pending', name: r.name });
+  }
+
+  if (url === '/api/requests/add' && req.method === 'POST') {
+    return body(req, (j) => {
+      const name = String((j && j.name) || '').trim().slice(0, 60);
+      if (!name) return send(res, 400, { error: 'name required' });
+      const list = read('requests');
+      let r = list.find(x => x.name.toLowerCase() === name.toLowerCase());
+      if (!r) {
+        r = { id: Date.now(), name, status: 'approved', time: new Date().toISOString() };
+        list.push(r);
+      } else {
+        r.status = 'approved';
+      }
+      write('requests', list);
+      send(res, 201, { ok: true, request: r });
     });
   }
 

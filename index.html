@@ -51,7 +51,8 @@
   .hbox{display:flex;flex-direction:column;gap:16px}
   .svhead{display:flex;justify-content:space-between;align-items:center}
   #reqList{display:flex;flex-direction:column;gap:10px;max-height:520px;overflow-y:auto}
-  .req{display:flex;align-items:center;gap:12px;background:#fff;border-radius:18px;padding:12px 14px;box-shadow:0 4px 14px rgba(80,50,180,.1)}
+  .req{display:flex;flex-direction:column;gap:10px;background:#fff;border-radius:18px;padding:12px 14px;box-shadow:0 4px 14px rgba(80,50,180,.1)}
+  .req-row{display:flex;align-items:center;gap:12px}
   .req .av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#ff6b9a,#ffa36b);color:#fff;font-weight:700;display:grid;place-items:center}
   .req .rt{flex:1}.req b{display:block;color:#2b2a3d;font-size:15px}.req small{color:#9a98ad}
   .badge{background:#fff3d6;color:#c58a00;font-size:12px;font-weight:600;padding:5px 10px;border-radius:12px}
@@ -123,7 +124,7 @@
     <div class="pages">
       <div class="page on" id="p-home">
         <div id="homeMenu" class="hbox">
-          <button class="menu add"><div class="mic">➕</div><div><b>เพิ่มลูกค้า</b><small>บันทึกลูกค้าใหม่</small></div></button>
+          <button class="menu add" onclick="addCustomer()"><div class="mic">➕</div><div><b>เพิ่มลูกค้า</b><small>บันทึกลูกค้าใหม่</small></div></button>
           <button class="menu status" onclick="openStatus()"><div class="mic">📊</div><div><b>ดูสถานะ</b><small>ตรวจสอบสถานะลูกค้า</small></div></button>
         </div>
         <div id="statusView" class="hbox" style="display:none">
@@ -170,8 +171,8 @@
   </div>
 
   <div class="screen" id="userSent">
-    <div class="ok"><div class="tick">✓</div>ส่งคำขอเรียบร้อย<p class="sub">รอแอดมินอนุมัติ</p></div>
-    <button class="back" onclick="show('select')">← กลับหน้าแรก</button>
+    <div class="ok"><div class="tick">✓</div><span id="sentTitle">ส่งคำขอเรียบร้อย</span><p class="sub" id="waitNotice">รอแอดมินอนุมัติ</p></div>
+    <button class="back" onclick="cancelWait()">← กลับหน้าแรก</button>
   </div>
 
   <div class="screen" id="custMain">
@@ -206,6 +207,11 @@
     if(id==='userPage') document.getElementById('uname').value='';
   }
   let sending=false;
+  let checkPollTimer=null;
+  function cancelWait(){
+    clearInterval(checkPollTimer);
+    show('select');
+  }
   async function sendRequest(){
     if(sending) return;
     const name=document.getElementById('uname').value.trim();
@@ -220,9 +226,40 @@
     try{
       const r=await fetch('/api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
       if(!r.ok) throw 0;
+      const data=await r.json();
       document.getElementById('custName').textContent=name;
+
+      if(data.status==='approved'){
+        show('custMain');
+        loadMyQuests();
+        return;
+      }
+      if(data.status==='rejected'){
+        document.getElementById('uerr').textContent='คำขอของคุณถูกปฏิเสธ กรุณาติดต่อแอดมิน';
+        return;
+      }
+
+      document.getElementById('sentTitle').textContent='ส่งคำขอเรียบร้อย';
+      document.getElementById('waitNotice').innerHTML='รอแอดมินอนุมัติ...<br><small style="color:#7c5cff;font-size:13px;display:block;margin-top:6px">ระบบจะเข้าสู่หน้าหลักอัตโนมัติเมื่อแอดมินกดอนุมัติ</small>';
       show('userSent');
-      setTimeout(()=>{ if(document.getElementById('userSent').classList.contains('active')){ show('custMain'); loadMyQuests(); } },1500);
+      clearInterval(checkPollTimer);
+      checkPollTimer=setInterval(async()=>{
+        if(!document.getElementById('userSent').classList.contains('active')){
+          clearInterval(checkPollTimer);
+          return;
+        }
+        try{
+          const c=await (await fetch('/api/requests/check?name='+encodeURIComponent(name),{cache:'no-store'})).json();
+          if(c.exists && c.status==='approved'){
+            clearInterval(checkPollTimer);
+            document.getElementById('waitNotice').innerHTML='<b style="color:#22c58b">✓ ได้รับการอนุมัติแล้ว! กำลังเข้าสู่ระบบ...</b>';
+            setTimeout(()=>{ show('custMain'); loadMyQuests(); },600);
+          } else if(c.exists && c.status==='rejected'){
+            clearInterval(checkPollTimer);
+            document.getElementById('waitNotice').innerHTML='<b style="color:#e5484d">✕ คำขอถูกปฏิเสธ</b>';
+          }
+        }catch(e){}
+      },2000);
     }catch(e){
       document.getElementById('uerr').textContent='ส่งไม่สำเร็จ ลองใหม่อีกครั้ง';
     }finally{
@@ -239,12 +276,56 @@
     list.forEach(r=>{
       const d=document.createElement('div');
       d.className='req';
-      d.innerHTML='<div class="av"></div><div class="rt"><b></b><small></small></div><span class="badge">รออนุมัติ</span>';
+      const st = r.status || 'pending';
+      let badgeHtml = '<span class="badge">รออนุมัติ</span>';
+      let actHtml = '<div class="acts"><button class="ok-btn">อนุมัติ</button><button class="no-btn">ปฏิเสธ</button></div>';
+      if(st==='approved'){
+        badgeHtml = '<span class="badge got">✓ อนุมัติแล้ว</span>';
+        actHtml = '<div class="acts"><button class="no-btn" style="opacity:.65">ยกเลิกอนุมัติ</button></div>';
+      } else if(st==='rejected'){
+        badgeHtml = '<span class="badge rej">✕ ถูกปฏิเสธ</span>';
+        actHtml = '<div class="acts"><button class="ok-btn">เปลี่ยนเป็นอนุมัติ</button></div>';
+      }
+
+      d.innerHTML='<div class="req-row"><div class="av"></div><div class="rt"><b></b><small></small></div>'+badgeHtml+'</div>'+actHtml;
       d.querySelector('.av').textContent=r.name.charAt(0).toUpperCase();
       d.querySelector('b').textContent=r.name;
       d.querySelector('small').textContent=new Date(r.time).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
+
+      const okBtn = d.querySelector('.ok-btn');
+      if(okBtn) okBtn.onclick=()=>decideRequest(r.id, r.name, 'approved');
+      const noBtn = d.querySelector('.no-btn');
+      if(noBtn) noBtn.onclick=()=>decideRequest(r.id, r.name, 'rejected');
+
       box.appendChild(d);
     });
+  }
+  async function decideRequest(id, name, status){
+    try{
+      await fetch('/api/requests/decide',{
+        method:'POST',
+        headers:'application/json' ? {'Content-Type':'application/json'} : {},
+        body:JSON.stringify({id, name, status})
+      });
+    }catch(e){}
+    loadStatus();
+  }
+  async function addCustomer(){
+    const name=prompt('กรอกชื่อลูกค้าที่ต้องการเพิ่ม (จะได้รับการอนุมัติทันที):');
+    if(!name || !name.trim()) return;
+    try{
+      const r=await fetch('/api/requests/add',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name: name.trim()})
+      });
+      if(r.ok){
+        alert('เพิ่มลูกค้า "'+name.trim()+'" สำเร็จและอนุมัติเรียบร้อย');
+        if(document.getElementById('statusView').style.display!=='none') loadStatus();
+      }
+    }catch(e){
+      alert('เกิดข้อผิดพลาดในการเพิ่มลูกค้า');
+    }
   }
   function openStatus(){
     document.getElementById('homeMenu').style.display='none';
@@ -368,7 +449,10 @@
     const box=document.getElementById('custList');
     box.innerHTML='<div class="empty">กำลังโหลด...</div>';
     let names=[];
-    try{ names=[...new Set((await (await fetch('/api/requests',{cache:'no-store'})).json()).map(r=>r.name))]; }catch(e){}
+    try{
+      const allReqs = await (await fetch('/api/requests',{cache:'no-store'})).json();
+      names=[...new Set(allReqs.filter(r=>r.status==='approved'||!r.status).map(r=>r.name))];
+    }catch(e){}
     box.innerHTML=names.length?'':'<div class="empty">ยังไม่มีลูกค้า</div>';
     names.forEach(n=>{
       const l=document.createElement('label');
