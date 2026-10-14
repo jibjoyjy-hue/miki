@@ -36,7 +36,7 @@
   .ok .tick{width:110px;height:110px;margin:0 auto 20px;border-radius:50%;background:linear-gradient(135deg,#22c58b,#6be3b0);display:grid;place-items:center;font-size:56px;color:#fff;box-shadow:0 14px 30px rgba(34,197,139,.45);animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
   @keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
 
-  #main{padding:0;gap:0;justify-content:flex-start}
+  #main,#custMain{padding:0;gap:0;justify-content:flex-start}
   .pages{flex:1;position:relative}
   .page{display:none;height:100%;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding-top:30px}
   .page.on{display:flex;animation:in .35s ease}
@@ -157,6 +157,21 @@
     <div class="ok"><div class="tick">✓</div>ส่งคำขอเรียบร้อย<p class="sub">รอแอดมินอนุมัติ</p></div>
     <button class="back" onclick="show('select')">← กลับหน้าแรก</button>
   </div>
+
+  <div class="screen" id="custMain">
+    <div class="pages">
+      <div class="page on" id="c-home"><div class="pic">🏠</div><h2>สวัสดี <span id="custName"></span></h2></div>
+      <div class="page" id="c-chat"><div class="pic">💬</div><h2>Chat</h2></div>
+      <div class="page" id="c-trade"><div class="pic">🔄</div><h2>Trade</h2></div>
+      <div class="page" id="c-shop"><div class="pic">🛍️</div><h2>Shop</h2></div>
+    </div>
+    <div class="tabbar">
+      <button class="on" data-tab="home" onclick="ctab('home')"><i>🏠</i>Home</button>
+      <button data-tab="chat" onclick="ctab('chat')"><i>💬</i>Chat</button>
+      <button data-tab="trade" onclick="ctab('trade')"><i>🔄</i>Trade</button>
+      <button data-tab="shop" onclick="ctab('shop')"><i>🛍️</i>Shop</button>
+    </div>
+  </div>
 </div>
 <script>
   function show(id){
@@ -182,7 +197,9 @@
     try{
       const r=await fetch('/api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
       if(!r.ok) throw 0;
+      document.getElementById('custName').textContent=name;
       show('userSent');
+      setTimeout(()=>{ if(document.getElementById('userSent').classList.contains('active')) show('custMain'); },1500);
     }catch(e){
       document.getElementById('uerr').textContent='ส่งไม่สำเร็จ ลองใหม่อีกครั้ง';
     }finally{
@@ -224,9 +241,13 @@
     } else document.getElementById('err').textContent='ข้อความไม่ถูกต้อง';
   }
   function tab(name){
-    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on',p.id==='p-'+name));
-    document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
+    document.querySelectorAll('#main .page').forEach(p=>p.classList.toggle('on',p.id==='p-'+name));
+    document.querySelectorAll('#main .tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
     if(name==='quest') loadQuests();
+  }
+  function ctab(name){
+    document.querySelectorAll('#custMain .page').forEach(p=>p.classList.toggle('on',p.id==='c-'+name));
+    document.querySelectorAll('#custMain .tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
   }
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   async function loadQuests(){
