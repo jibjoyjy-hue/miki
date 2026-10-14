@@ -25,6 +25,11 @@ http.createServer((req, res) => {
         const name = String(JSON.parse(body).name || '').trim().slice(0, 60);
         if (!name) { res.writeHead(400); return res.end('{"error":"name required"}'); }
         const list = read();
+        const last = list[list.length - 1];
+        if (last && last.name === name && Date.now() - new Date(last.time).getTime() < 15000) {
+          res.writeHead(201, { 'Content-Type': 'application/json' });
+          return res.end('{"ok":true,"duplicate":true}');
+        }
         list.push({ name, time: new Date().toISOString() });
         write(list);
         res.writeHead(201, { 'Content-Type': 'application/json' });

@@ -117,7 +117,7 @@
     <h2>สมัครแอคเคานต์</h2>
     <input id="uname" type="text" placeholder="ใส่ชื่อของคุณ" onkeydown="if(event.key==='Enter')sendRequest()">
     <div class="err" id="uerr"></div>
-    <button class="btn" onclick="sendRequest()">ส่งคำขอ</button>
+    <button class="btn" id="sendBtn" onclick="sendRequest()">ส่งคำขอ</button>
     <button class="back" onclick="show('select')">← กลับ</button>
   </div>
 
@@ -135,18 +135,26 @@
     document.getElementById('uerr').textContent='';
     if(id==='userPage') document.getElementById('uname').value='';
   }
+  let sending=false;
   async function sendRequest(){
+    if(sending) return;
     const name=document.getElementById('uname').value.trim();
     if(!name){
       document.getElementById('uerr').textContent='กรุณาใส่ชื่อ';
       return;
     }
+    sending=true;
+    const btn=document.getElementById('sendBtn');
+    btn.disabled=true; btn.textContent='กำลังส่ง...';
+    document.getElementById('uerr').textContent='';
     try{
       const r=await fetch('/api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
       if(!r.ok) throw 0;
       show('userSent');
     }catch(e){
       document.getElementById('uerr').textContent='ส่งไม่สำเร็จ ลองใหม่อีกครั้ง';
+    }finally{
+      sending=false; btn.disabled=false; btn.textContent='ส่งคำขอ';
     }
   }
   let statusTimer=null;
