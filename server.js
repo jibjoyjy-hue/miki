@@ -4,39 +4,54 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
-const DATA = path.join(__dirname, 'requests.json');
+const file = (n) => path.join(__dirname, n + '.json');
+const read = (n) => { try { return JSON.parse(fs.readFileSync(file(n), 'utf8')); } catch { return []; } };
+const write = (n, d) => fs.writeFileSync(file(n), JSON.stringify(d, null, 2));
 
-const read = () => { try { return JSON.parse(fs.readFileSync(DATA, 'utf8')); } catch { return []; } };
-const write = (d) => fs.writeFileSync(DATA, JSON.stringify(d, null, 2));
+const send = (res, code, obj) => {
+  res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify(obj));
+};
+const body = (req, cb) => {
+  let b = '';
+  req.on('data', c => { b += c; if (b.length > 2e4) req.destroy(); });
+  req.on('end', () => { try { cb(JSON.parse(b)); } catch { cb(null); } });
+};
 
 http.createServer((req, res) => {
   const url = req.url.split('?')[0];
 
-  if (url === '/api/requests' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    return res.end(JSON.stringify(read()));
-  }
+  if (url === '/api/requests' && req.method === 'GET') return send(res, 200, read('requests'));
 
   if (url === '/api/requests' && req.method === 'POST') {
-    let body = '';
-    req.on('data', c => { body += c; if (body.length > 1e4) req.destroy(); });
-    req.on('end', () => {
-      try {
-        const name = String(JSON.parse(body).name || '').trim().slice(0, 60);
-        if (!name) { res.writeHead(400); return res.end('{"error":"name required"}'); }
-        const list = read();
-        const last = list[list.length - 1];
-        if (last && last.name === name && Date.now() - new Date(last.time).getTime() < 15000) {
-          res.writeHead(201, { 'Content-Type': 'application/json' });
-          return res.end('{"ok":true,"duplicate":true}');
-        }
-        list.push({ name, time: new Date().toISOString() });
-        write(list);
-        res.writeHead(201, { 'Content-Type': 'application/json' });
-        res.end('{"ok":true}');
-      } catch { res.writeHead(400); res.end('{"error":"bad request"}'); }
+    return body(req, (j) => {
+      const name = String((j && j.name) || '').trim().slice(0, 60);
+      if (!name) return send(res, 400, { error: 'name required' });
+      const list = read('requests');
+      const last = list[list.length - 1];
+      if (last && last.name === name && Date.now() - new Date(last.time).getTime() < 15000)
+        return send(res, 201, { ok: true, duplicate: true });
+      list.push({ name, time: new Date().toISOString() });
+      write('requests', list);
+      send(res, 201, { ok: true });
     });
-    return;
+  }
+
+  if (url === '/api/quests' && req.method === 'GET') return send(res, 200, read('quests'));
+
+  if (url === '/api/quests' && req.method === 'POST') {
+    return body(req, (j) => {
+      const title = String((j && j.title) || '').trim().slice(0, 100);
+      const desc = String((j && j.desc) || '').trim().slice(0, 500);
+      const credit = Math.max(0, Math.floor(Number(j && j.credit) || 0));
+      const assignees = Array.isArray(j && j.assignees)
+        ? j.assignees.map(a => String(a).slice(0, 60)).slice(0, 200) : [];
+      if (!title) return send(res, 400, { error: 'title required' });
+      const list = read('quests');
+      list.push({ id: Date.now(), title, desc, credit, assignees, time: new Date().toISOString() });
+      write('quests', list);
+      send(res, 201, { ok: true });
+    });
   }
 
   if (url === '/' || url === '/index.html') {

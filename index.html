@@ -56,6 +56,22 @@
   .req .rt{flex:1}.req b{display:block;color:#2b2a3d;font-size:15px}.req small{color:#9a98ad}
   .badge{background:#fff3d6;color:#c58a00;font-size:12px;font-weight:600;padding:5px 10px;border-radius:12px}
   .empty{text-align:center;color:#9a98ad;padding:40px 0}
+  #p-quest{justify-content:flex-start;align-items:stretch;padding:56px 20px 0}
+  #p-quest .hbox{max-height:620px;overflow-y:auto;padding-bottom:12px}
+  #questList,#custList{display:flex;flex-direction:column;gap:10px}
+  .fl{width:100%;padding:13px 16px;font-size:16px;border:2px solid #e3dcff;background:#fff;border-radius:14px;outline:none;font-family:inherit;resize:none}
+  .fl:focus{border-color:#7c5cff;box-shadow:0 0 0 4px rgba(124,92,255,.15)}
+  .lbl{color:#2b2a3d;font-size:15px}
+  .mini{border:none;background:#efeaff;color:#6a4cff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:10px;margin-left:6px;cursor:pointer}
+  .cust{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:11px 14px;box-shadow:0 3px 10px rgba(80,50,180,.08);cursor:pointer;color:#2b2a3d}
+  .cust input{width:20px;height:20px;accent-color:#7c5cff}
+  .qcard{background:#fff;border-radius:18px;padding:14px 16px;box-shadow:0 4px 14px rgba(80,50,180,.1)}
+  .qtop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .qtop b{color:#2b2a3d}
+  .credit{background:#fff3d6;color:#c58a00;font-weight:700;font-size:13px;padding:4px 10px;border-radius:12px;white-space:nowrap}
+  .qcard p{color:#6f6d85;font-size:13px;margin:6px 0}
+  .who{font-size:12px;color:#9a98ad;margin-top:8px}
+  .chip{display:inline-block;background:#efeaff;color:#6a4cff;font-weight:600;padding:3px 9px;border-radius:10px;margin:3px 4px 0 0}
   .ok .sub{font-size:15px;font-weight:400;color:#8a88a0;margin-top:8px}
   .page .pic{width:96px;height:96px;border-radius:30px;background:linear-gradient(135deg,#6a4cff,#a46bff);display:grid;place-items:center;font-size:48px;box-shadow:0 14px 28px rgba(106,76,255,.35)}
   .tabbar{margin:0 14px 14px;height:68px;background:#fff;border-radius:24px;box-shadow:0 8px 24px rgba(80,50,180,.18);display:flex;justify-content:space-around;align-items:center}
@@ -100,7 +116,23 @@
           <div id="reqList"></div>
         </div>
       </div>
-      <div class="page" id="p-quest"><div class="pic">📜</div><h2>Quest</h2></div>
+      <div class="page" id="p-quest">
+        <div id="questMain" class="hbox">
+          <div class="svhead"><span style="width:50px"></span><h2>Quest</h2><span style="width:50px"></span></div>
+          <button class="btn" onclick="openQuestForm()">＋ เพิ่มภารกิจ</button>
+          <div id="questList"></div>
+        </div>
+        <div id="questForm" class="hbox" style="display:none">
+          <div class="svhead"><button class="back" onclick="closeQuestForm()">← กลับ</button><h2>เพิ่มภารกิจ</h2><span style="width:50px"></span></div>
+          <input id="qTitle" type="text" placeholder="รายการ" class="fl">
+          <textarea id="qDesc" placeholder="คำอธิบาย" rows="3" class="fl"></textarea>
+          <input id="qCredit" type="number" min="0" placeholder="เครดิตที่ได้" class="fl">
+          <div class="svhead"><b class="lbl">ส่งให้ลูกค้า</b><span><button class="mini" onclick="toggleAll(true)">เลือกทั้งหมด</button><button class="mini" onclick="toggleAll(false)">ล้าง</button></span></div>
+          <div id="custList"></div>
+          <div class="err" id="qErr"></div>
+          <button class="btn" id="qSave" onclick="saveQuest()">บันทึกภารกิจ</button>
+        </div>
+      </div>
       <div class="page" id="p-gift"><div class="pic">🎁</div><h2>Gift</h2></div>
       <div class="page" id="p-shop"><div class="pic">🛍️</div><h2>Shop</h2></div>
     </div>
@@ -194,7 +226,68 @@
   function tab(name){
     document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on',p.id==='p-'+name));
     document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
+    if(name==='quest') loadQuests();
   }
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  async function loadQuests(){
+    const box=document.getElementById('questList');
+    let list=[];
+    try{ list=(await (await fetch('/api/quests',{cache:'no-store'})).json()).reverse(); }
+    catch(e){ box.innerHTML='<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
+    box.innerHTML=list.length?'':'<div class="empty">ยังไม่มีภารกิจ</div>';
+    list.forEach(q=>{
+      const d=document.createElement('div');
+      d.className='qcard';
+      d.innerHTML='<div class="qtop"><b>'+esc(q.title)+'</b><span class="credit">🪙 '+q.credit+'</span></div>'
+        +(q.desc?'<p>'+esc(q.desc)+'</p>':'')
+        +'<div class="who">ส่งให้: '+(q.assignees.length?q.assignees.map(a=>'<span class="chip">'+esc(a)+'</span>').join(''):'<i>ยังไม่เลือก</i>')+'</div>';
+      box.appendChild(d);
+    });
+  }
+  async function openQuestForm(){
+    document.getElementById('questMain').style.display='none';
+    document.getElementById('questForm').style.display='flex';
+    ['qTitle','qDesc','qCredit'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('qErr').textContent='';
+    const box=document.getElementById('custList');
+    box.innerHTML='<div class="empty">กำลังโหลด...</div>';
+    let names=[];
+    try{ names=[...new Set((await (await fetch('/api/requests',{cache:'no-store'})).json()).map(r=>r.name))]; }catch(e){}
+    box.innerHTML=names.length?'':'<div class="empty">ยังไม่มีลูกค้า</div>';
+    names.forEach(n=>{
+      const l=document.createElement('label');
+      l.className='cust';
+      l.innerHTML='<input type="checkbox" value=""><span></span>';
+      l.querySelector('input').value=n;
+      l.querySelector('span').textContent=n;
+      box.appendChild(l);
+    });
+  }
+  function toggleAll(on){ document.querySelectorAll('#custList input').forEach(c=>c.checked=on); }
+  function closeQuestForm(){
+    document.getElementById('questForm').style.display='none';
+    document.getElementById('questMain').style.display='flex';
+    loadQuests();
+  }
+  let savingQ=false;
+  async function saveQuest(){
+    if(savingQ) return;
+    const title=document.getElementById('qTitle').value.trim();
+    const err=document.getElementById('qErr');
+    if(!title){ err.textContent='กรุณาใส่ชื่อรายการ'; return; }
+    const assignees=[...document.querySelectorAll('#custList input:checked')].map(c=>c.value);
+    savingQ=true;
+    const btn=document.getElementById('qSave');
+    btn.disabled=true; btn.textContent='กำลังบันทึก...';
+    try{
+      const r=await fetch('/api/quests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        title,desc:document.getElementById('qDesc').value,credit:document.getElementById('qCredit').value,assignees})});
+      if(!r.ok) throw 0;
+      closeQuestForm();
+    }catch(e){ err.textContent='บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง'; }
+    finally{ savingQ=false; btn.disabled=false; btn.textContent='บันทึกภารกิจ'; }
+  }
+  document.getElementById('questMain') && loadQuests();
 </script>
 </body>
 </html>
