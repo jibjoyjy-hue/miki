@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MK</title>
+<style>
+  *{box-sizing:border-box;margin:0;font-family:'Segoe UI',Tahoma,sans-serif}
+  body{background:radial-gradient(circle at 20% 20%,#c9b8ff,transparent 50%),radial-gradient(circle at 80% 80%,#ffc6e0,transparent 50%),#efeaff;display:flex;justify-content:center;align-items:center;min-height:100vh}
+  .phone{width:375px;height:780px;background:linear-gradient(180deg,#faf8ff,#fff);border-radius:44px;border:10px solid #1c1b29;box-shadow:0 30px 70px rgba(80,50,180,.35);overflow:hidden;position:relative}
+  .phone::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:24px;background:#1c1b29;border-radius:0 0 16px 16px;z-index:5}
+  .blob{position:absolute;border-radius:50%;filter:blur(40px);opacity:.5;z-index:0}
+  .b1{width:200px;height:200px;background:#a58bff;top:-60px;right:-60px}
+  .b2{width:180px;height:180px;background:#ff9ccc;bottom:-60px;left:-60px}
+  .screen{display:none;height:100%;flex-direction:column;justify-content:center;gap:22px;padding:50px 26px 30px;position:relative;z-index:1}
+  .screen.active{display:flex;animation:in .4s ease}
+  @keyframes in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .title{text-align:center;margin-bottom:6px}
+  .title h1{font-size:26px;color:#2b2a3d}.title p{color:#8a88a0;margin-top:4px;font-size:14px}
+  .choice{flex:1;max-height:210px;border:none;border-radius:26px;color:#fff;font-size:24px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;transition:.25s;position:relative;overflow:hidden}
+  .choice small{font-size:13px;font-weight:400;opacity:.85}
+  .choice .ic{width:76px;height:76px;border-radius:24px;background:rgba(255,255,255,.22);display:grid;place-items:center;font-size:40px;backdrop-filter:blur(6px)}
+  .admin{background:linear-gradient(135deg,#6a4cff,#a46bff);box-shadow:0 14px 28px rgba(106,76,255,.4)}
+  .user{background:linear-gradient(135deg,#ff6b9a,#ffa36b);box-shadow:0 14px 28px rgba(255,107,154,.4)}
+  .choice:hover{transform:translateY(-4px) scale(1.02)}
+  .choice:active{transform:scale(.98)}
+  h2{text-align:center;color:#2b2a3d;font-size:24px}
+  .lock{width:84px;height:84px;margin:0 auto;border-radius:26px;background:linear-gradient(135deg,#6a4cff,#a46bff);display:grid;place-items:center;font-size:40px;box-shadow:0 12px 24px rgba(106,76,255,.4)}
+  input{width:100%;padding:16px 18px;font-size:18px;border:2px solid #e3dcff;background:#fff;border-radius:16px;outline:none;transition:.2s;text-align:center}
+  input:focus{border-color:#7c5cff;box-shadow:0 0 0 4px rgba(124,92,255,.15)}
+  .btn{padding:16px;font-size:18px;font-weight:700;border:none;border-radius:16px;background:linear-gradient(135deg,#6a4cff,#a46bff);color:#fff;cursor:pointer;box-shadow:0 10px 20px rgba(106,76,255,.35);transition:.2s}
+  .btn:hover{transform:translateY(-2px)}
+  .back{background:none;border:none;color:#7c5cff;font-size:15px;cursor:pointer;font-weight:600}
+  .err{color:#e5484d;text-align:center;min-height:20px;font-size:14px}
+  .ok{text-align:center;font-size:26px;font-weight:700;color:#2b2a3d}
+  .ok .tick{width:110px;height:110px;margin:0 auto 20px;border-radius:50%;background:linear-gradient(135deg,#22c58b,#6be3b0);display:grid;place-items:center;font-size:56px;color:#fff;box-shadow:0 14px 30px rgba(34,197,139,.45);animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+
+  #main{padding:0;gap:0;justify-content:flex-start}
+  .pages{flex:1;position:relative}
+  .page{display:none;height:100%;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding-top:30px}
+  .page.on{display:flex;animation:in .35s ease}
+  #p-home{justify-content:flex-start;align-items:stretch;padding:56px 20px 0;gap:16px}
+  .menu{display:flex;align-items:center;gap:16px;text-align:left;border:none;border-radius:24px;padding:22px 20px;color:#fff;cursor:pointer;transition:.25s}
+  .menu b{display:block;font-size:20px}.menu small{opacity:.85;font-size:13px}
+  .menu .mic{width:60px;height:60px;border-radius:20px;background:rgba(255,255,255,.22);display:grid;place-items:center;font-size:28px;flex:none}
+  .menu.add{background:linear-gradient(135deg,#6a4cff,#a46bff);box-shadow:0 12px 24px rgba(106,76,255,.35)}
+  .menu.status{background:linear-gradient(135deg,#22c58b,#5fd8b0);box-shadow:0 12px 24px rgba(34,197,139,.35)}
+  .menu:hover{transform:translateY(-3px)}
+  .user-lock{background:linear-gradient(135deg,#ff6b9a,#ffa36b);box-shadow:0 12px 24px rgba(255,107,154,.4)}
+  .hbox{display:flex;flex-direction:column;gap:16px}
+  .svhead{display:flex;justify-content:space-between;align-items:center}
+  #reqList{display:flex;flex-direction:column;gap:10px;max-height:520px;overflow-y:auto}
+  .req{display:flex;align-items:center;gap:12px;background:#fff;border-radius:18px;padding:12px 14px;box-shadow:0 4px 14px rgba(80,50,180,.1)}
+  .req .av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#ff6b9a,#ffa36b);color:#fff;font-weight:700;display:grid;place-items:center}
+  .req .rt{flex:1}.req b{display:block;color:#2b2a3d;font-size:15px}.req small{color:#9a98ad}
+  .badge{background:#fff3d6;color:#c58a00;font-size:12px;font-weight:600;padding:5px 10px;border-radius:12px}
+  .empty{text-align:center;color:#9a98ad;padding:40px 0}
+  .ok .sub{font-size:15px;font-weight:400;color:#8a88a0;margin-top:8px}
+  .page .pic{width:96px;height:96px;border-radius:30px;background:linear-gradient(135deg,#6a4cff,#a46bff);display:grid;place-items:center;font-size:48px;box-shadow:0 14px 28px rgba(106,76,255,.35)}
+  .tabbar{margin:0 14px 14px;height:68px;background:#fff;border-radius:24px;box-shadow:0 8px 24px rgba(80,50,180,.18);display:flex;justify-content:space-around;align-items:center}
+  .tabbar button{flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:600;color:#9a98ad;transition:.2s}
+  .tabbar button i{font-style:normal;font-size:22px;filter:grayscale(1);opacity:.6;transition:.2s}
+  .tabbar button.on{color:#6a4cff}
+  .tabbar button.on i{filter:none;opacity:1;transform:translateY(-2px)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="blob b1"></div><div class="blob b2"></div>
+
+  <div class="screen active" id="select">
+    <div class="title"><h1>ยินดีต้อนรับ</h1><p>เลือกประเภทผู้เข้าใช้งาน</p></div>
+    <button class="choice admin" onclick="show('adminLogin')"><div class="ic">🛠️</div>แอดมิน<small>สำหรับเจ้าของร้าน</small></button>
+    <button class="choice user" onclick="show('userPage')"><div class="ic">👤</div>ผู้ใช้<small>สำหรับลูกค้า</small></button>
+  </div>
+
+  <div class="screen" id="adminLogin">
+    <div class="lock">🔐</div>
+    <h2>เข้าสู่ระบบแอดมิน</h2>
+    <input id="pw" type="text" placeholder="พิมพ์ข้อความ" onkeydown="if(event.key==='Enter')login()">
+    <div class="err" id="err"></div>
+    <button class="btn" onclick="login()">ตกลง</button>
+    <button class="back" onclick="show('select')">← กลับ</button>
+  </div>
+
+  <div class="screen" id="adminOk">
+    <div class="ok"><div class="tick">✓</div>เข้าสู่ระบบเรียบร้อย</div>
+  </div>
+
+  <div class="screen" id="main">
+    <div class="pages">
+      <div class="page on" id="p-home">
+        <div id="homeMenu" class="hbox">
+          <button class="menu add"><div class="mic">➕</div><div><b>เพิ่มลูกค้า</b><small>บันทึกลูกค้าใหม่</small></div></button>
+          <button class="menu status" onclick="openStatus()"><div class="mic">📊</div><div><b>ดูสถานะ</b><small>ตรวจสอบสถานะลูกค้า</small></div></button>
+        </div>
+        <div id="statusView" class="hbox" style="display:none">
+          <div class="svhead"><button class="back" onclick="closeStatus()">← กลับ</button><h2>สถานะ</h2><span style="width:50px"></span></div>
+          <div id="reqList"></div>
+        </div>
+      </div>
+      <div class="page" id="p-quest"><div class="pic">📜</div><h2>Quest</h2></div>
+      <div class="page" id="p-gift"><div class="pic">🎁</div><h2>Gift</h2></div>
+      <div class="page" id="p-shop"><div class="pic">🛍️</div><h2>Shop</h2></div>
+    </div>
+    <div class="tabbar">
+      <button class="on" data-tab="home" onclick="tab('home')"><i>🏠</i>Home</button>
+      <button data-tab="quest" onclick="tab('quest')"><i>📜</i>Quest</button>
+      <button data-tab="gift" onclick="tab('gift')"><i>🎁</i>Gift</button>
+      <button data-tab="shop" onclick="tab('shop')"><i>🛍️</i>Shop</button>
+    </div>
+  </div>
+
+  <div class="screen" id="userPage">
+    <div class="lock user-lock">👤</div>
+    <h2>สมัครแอคเคานต์</h2>
+    <input id="uname" type="text" placeholder="ใส่ชื่อของคุณ" onkeydown="if(event.key==='Enter')sendRequest()">
+    <div class="err" id="uerr"></div>
+    <button class="btn" onclick="sendRequest()">ส่งคำขอ</button>
+    <button class="back" onclick="show('select')">← กลับ</button>
+  </div>
+
+  <div class="screen" id="userSent">
+    <div class="ok"><div class="tick">✓</div>ส่งคำขอเรียบร้อย<p class="sub">รอแอดมินอนุมัติ</p></div>
+    <button class="back" onclick="show('select')">← กลับหน้าแรก</button>
+  </div>
+</div>
+<script>
+  function show(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.getElementById('err').textContent='';
+    document.getElementById('pw').value='';
+    document.getElementById('uerr').textContent='';
+    if(id==='userPage') document.getElementById('uname').value='';
+  }
+  async function sendRequest(){
+    const name=document.getElementById('uname').value.trim();
+    if(!name){
+      document.getElementById('uerr').textContent='กรุณาใส่ชื่อ';
+      return;
+    }
+    try{
+      const r=await fetch('/api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+      if(!r.ok) throw 0;
+      show('userSent');
+    }catch(e){
+      document.getElementById('uerr').textContent='ส่งไม่สำเร็จ ลองใหม่อีกครั้ง';
+    }
+  }
+  let statusTimer=null;
+  async function loadStatus(){
+    const box=document.getElementById('reqList');
+    let list=[];
+    try{ list=(await (await fetch('/api/requests',{cache:'no-store'})).json()).reverse(); }
+    catch(e){ box.innerHTML='<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
+    box.innerHTML=list.length?'':'<div class="empty">ยังไม่มีคำขอ</div>';
+    list.forEach(r=>{
+      const d=document.createElement('div');
+      d.className='req';
+      d.innerHTML='<div class="av"></div><div class="rt"><b></b><small></small></div><span class="badge">รออนุมัติ</span>';
+      d.querySelector('.av').textContent=r.name.charAt(0).toUpperCase();
+      d.querySelector('b').textContent=r.name;
+      d.querySelector('small').textContent=new Date(r.time).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
+      box.appendChild(d);
+    });
+  }
+  function openStatus(){
+    document.getElementById('homeMenu').style.display='none';
+    document.getElementById('statusView').style.display='flex';
+    loadStatus();
+    statusTimer=setInterval(loadStatus,3000);
+  }
+  function closeStatus(){
+    clearInterval(statusTimer);
+    document.getElementById('statusView').style.display='none';
+    document.getElementById('homeMenu').style.display='flex';
+  }
+  function login(){
+    if(document.getElementById('pw').value.trim()==='ร้านขายเอมเม่'){
+      show('adminOk');
+      setTimeout(()=>show('main'),1500);
+    } else document.getElementById('err').textContent='ข้อความไม่ถูกต้อง';
+  }
+  function tab(name){
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on',p.id==='p-'+name));
+    document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
+  }
+</script>
+</body>
+</html>
