@@ -56,6 +56,10 @@
   .req .rt{flex:1}.req b{display:block;color:#2b2a3d;font-size:15px}.req small{color:#9a98ad}
   .badge{background:#fff3d6;color:#c58a00;font-size:12px;font-weight:600;padding:5px 10px;border-radius:12px}
   .empty{text-align:center;color:#9a98ad;padding:40px 0}
+  #c-home{justify-content:flex-start;align-items:stretch;padding:56px 20px 0}
+  #c-home .hbox{max-height:620px;overflow-y:auto;padding-bottom:12px}
+  #myQuests{display:flex;flex-direction:column;gap:10px}
+  .greet small{color:#8a88a0}.greet h2{text-align:left;font-size:24px}
   #p-quest{justify-content:flex-start;align-items:stretch;padding:56px 20px 0}
   #p-quest .hbox{max-height:620px;overflow-y:auto;padding-bottom:12px}
   #questList,#custList{display:flex;flex-direction:column;gap:10px}
@@ -160,7 +164,13 @@
 
   <div class="screen" id="custMain">
     <div class="pages">
-      <div class="page on" id="c-home"><div class="pic">🏠</div><h2>สวัสดี <span id="custName"></span></h2></div>
+      <div class="page on" id="c-home">
+        <div class="hbox">
+          <div class="greet"><small>สวัสดี 👋</small><h2 id="custName"></h2></div>
+          <b class="lbl">ภารกิจของฉัน</b>
+          <div id="myQuests"></div>
+        </div>
+      </div>
       <div class="page" id="c-chat"><div class="pic">💬</div><h2>Chat</h2></div>
       <div class="page" id="c-trade"><div class="pic">🔄</div><h2>Trade</h2></div>
       <div class="page" id="c-shop"><div class="pic">🛍️</div><h2>Shop</h2></div>
@@ -199,7 +209,7 @@
       if(!r.ok) throw 0;
       document.getElementById('custName').textContent=name;
       show('userSent');
-      setTimeout(()=>{ if(document.getElementById('userSent').classList.contains('active')) show('custMain'); },1500);
+      setTimeout(()=>{ if(document.getElementById('userSent').classList.contains('active')){ show('custMain'); loadMyQuests(); } },1500);
     }catch(e){
       document.getElementById('uerr').textContent='ส่งไม่สำเร็จ ลองใหม่อีกครั้ง';
     }finally{
@@ -245,7 +255,27 @@
     document.querySelectorAll('#main .tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
     if(name==='quest') loadQuests();
   }
+  async function loadMyQuests(){
+    const box=document.getElementById('myQuests');
+    const me=document.getElementById('custName').textContent;
+    let list=[];
+    try{ list=(await (await fetch('/api/quests',{cache:'no-store'})).json()).filter(q=>q.assignees.includes(me)).reverse(); }
+    catch(e){ box.innerHTML='<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
+    box.innerHTML=list.length?'':'<div class="empty">ยังไม่มีภารกิจ</div>';
+    list.forEach(q=>{
+      const d=document.createElement('div');
+      d.className='qcard';
+      d.innerHTML='<div class="qtop"><b>'+esc(q.title)+'</b><span class="credit">🪙 '+q.credit+'</span></div>'
+        +(q.desc?'<p>'+esc(q.desc)+'</p>':'');
+      box.appendChild(d);
+    });
+  }
+  setInterval(()=>{
+    const home=document.getElementById('c-home');
+    if(document.getElementById('custMain').classList.contains('active') && home.classList.contains('on')) loadMyQuests();
+  },5000);
   function ctab(name){
+    if(name==='home') loadMyQuests();
     document.querySelectorAll('#custMain .page').forEach(p=>p.classList.toggle('on',p.id==='c-'+name));
     document.querySelectorAll('#custMain .tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
   }
