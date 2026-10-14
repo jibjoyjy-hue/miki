@@ -74,6 +74,17 @@
   .qtop b{color:#2b2a3d}
   .credit{background:#fff3d6;color:#c58a00;font-weight:700;font-size:13px;padding:4px 10px;border-radius:12px;white-space:nowrap}
   .qcard p{color:#6f6d85;font-size:13px;margin:6px 0}
+  #claimList{display:flex;flex-direction:column;gap:10px}
+  .qcard.claim{border:2px solid #ffe3a3}
+  .acts{display:flex;gap:8px;margin-top:10px}
+  .acts button,.claim-btn{border:none;border-radius:12px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;color:#fff}
+  .ok-btn{background:#22c58b;flex:1}.no-btn{background:#e5484d;flex:1}
+  .claim-btn{background:linear-gradient(135deg,#6a4cff,#a46bff)}
+  .claim-btn:disabled{opacity:.6}
+  .qact{margin-top:10px}
+  .badge.got{background:#dff7ec;color:#16915f}.badge.rej{background:#fde4e4;color:#d23b40}
+  .wallet{background:linear-gradient(135deg,#6a4cff,#a46bff);color:#fff;border-radius:22px;padding:18px 20px;box-shadow:0 10px 22px rgba(106,76,255,.35)}
+  .wallet small{opacity:.85}.wallet h1{font-size:34px;margin-top:4px}
   .who{font-size:12px;color:#9a98ad;margin-top:8px}
   .chip{display:inline-block;background:#efeaff;color:#6a4cff;font-weight:600;padding:3px 9px;border-radius:10px;margin:3px 4px 0 0}
   .ok .sub{font-size:15px;font-weight:400;color:#8a88a0;margin-top:8px}
@@ -124,6 +135,7 @@
         <div id="questMain" class="hbox">
           <div class="svhead"><span style="width:50px"></span><h2>Quest</h2><span style="width:50px"></span></div>
           <button class="btn" onclick="openQuestForm()">＋ เพิ่มภารกิจ</button>
+          <div id="claimList"></div>
           <div id="questList"></div>
         </div>
         <div id="questForm" class="hbox" style="display:none">
@@ -167,6 +179,7 @@
       <div class="page on" id="c-home">
         <div class="hbox">
           <div class="greet"><small>สวัสดี 👋</small><h2 id="custName"></h2></div>
+          <div class="wallet"><small>เครดิตของฉัน</small><h1>🪙 <span id="myCredit">0</span></h1></div>
           <b class="lbl">ภารกิจของฉัน</b>
           <div id="myQuests"></div>
         </div>
@@ -258,15 +271,37 @@
   async function loadMyQuests(){
     const box=document.getElementById('myQuests');
     const me=document.getElementById('custName').textContent;
-    let list=[];
-    try{ list=(await (await fetch('/api/quests',{cache:'no-store'})).json()).filter(q=>q.assignees.includes(me)).reverse(); }
-    catch(e){ box.innerHTML='<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
+    let list=[],claims=[],credit=0;
+    try{
+      const q=await (await fetch('/api/quests',{cache:'no-store'})).json();
+      claims=(await (await fetch('/api/claims',{cache:'no-store'})).json()).filter(c=>c.name===me);
+      credit=(await (await fetch('/api/balance?name='+encodeURIComponent(me),{cache:'no-store'})).json()).credit;
+      list=q.filter(x=>x.assignees.includes(me)).reverse();
+    }catch(e){ box.innerHTML='<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
+    document.getElementById('myCredit').textContent=credit;
     box.innerHTML=list.length?'':'<div class="empty">ยังไม่มีภารกิจ</div>';
     list.forEach(q=>{
+      const mine=claims.filter(c=>c.questId===q.id);
+      const last=mine[mine.length-1];
+      const st=last?last.status:'none';
       const d=document.createElement('div');
       d.className='qcard';
       d.innerHTML='<div class="qtop"><b>'+esc(q.title)+'</b><span class="credit">🪙 '+q.credit+'</span></div>'
-        +(q.desc?'<p>'+esc(q.desc)+'</p>':'');
+        +(q.desc?'<p>'+esc(q.desc)+'</p>':'')+'<div class="qact"></div>';
+      const act=d.querySelector('.qact');
+      if(st==='pending') act.innerHTML='<span class="badge">รอแอดมินอนุมัติ</span>';
+      else if(st==='approved') act.innerHTML='<span class="badge got">✓ ได้รับเครดิตแล้ว</span>';
+      else{
+        if(st==='rejected') act.innerHTML='<span class="badge rej">ถูกปฏิเสธ</span> ';
+        const b=document.createElement('button');
+        b.className='claim-btn'; b.textContent='รับภารกิจ';
+        b.onclick=async()=>{
+          b.disabled=true; b.textContent='กำลังส่ง...';
+          try{ await fetch('/api/claims',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({questId:q.id,name:me})}); }catch(e){}
+          loadMyQuests();
+        };
+        act.appendChild(b);
+      }
       box.appendChild(d);
     });
   }
@@ -282,9 +317,28 @@
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   async function loadQuests(){
     const box=document.getElementById('questList');
-    let list=[];
-    try{ list=(await (await fetch('/api/quests',{cache:'no-store'})).json()).reverse(); }
-    catch(e){ box.innerHTML='<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
+    const cbox=document.getElementById('claimList');
+    let list=[],claims=[];
+    try{
+      list=(await (await fetch('/api/quests',{cache:'no-store'})).json()).reverse();
+      claims=(await (await fetch('/api/claims',{cache:'no-store'})).json()).filter(c=>c.status==='pending').reverse();
+    }catch(e){ box.innerHTML='<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
+    cbox.innerHTML='';
+    if(claims.length){
+      const h=document.createElement('b'); h.className='lbl'; h.textContent='คำขอรับเครดิต ('+claims.length+')'; cbox.appendChild(h);
+    }
+    claims.forEach(c=>{
+      const d=document.createElement('div');
+      d.className='qcard claim';
+      d.innerHTML='<div class="qtop"><b></b><span class="credit"></span></div><div class="who"></div>'
+        +'<div class="acts"><button class="ok-btn">อนุมัติ</button><button class="no-btn">ปฏิเสธ</button></div>';
+      d.querySelector('b').textContent=c.title;
+      d.querySelector('.credit').textContent='🪙 '+c.credit;
+      d.querySelector('.who').textContent='ขอโดย: '+c.name;
+      d.querySelector('.ok-btn').onclick=()=>decideClaim(c.id,'approved');
+      d.querySelector('.no-btn').onclick=()=>decideClaim(c.id,'rejected');
+      cbox.appendChild(d);
+    });
     box.innerHTML=list.length?'':'<div class="empty">ยังไม่มีภารกิจ</div>';
     list.forEach(q=>{
       const d=document.createElement('div');
@@ -295,6 +349,17 @@
       box.appendChild(d);
     });
   }
+  async function decideClaim(id,status){
+    try{
+      await fetch('/api/claims/decide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status})});
+    }catch(e){}
+    loadQuests();
+  }
+  setInterval(()=>{
+    if(document.getElementById('main').classList.contains('active')
+      && document.getElementById('p-quest').classList.contains('on')
+      && document.getElementById('questMain').style.display!=='none') loadQuests();
+  },5000);
   async function openQuestForm(){
     document.getElementById('questMain').style.display='none';
     document.getElementById('questForm').style.display='flex';

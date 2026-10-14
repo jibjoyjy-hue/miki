@@ -54,6 +54,45 @@ http.createServer((req, res) => {
     });
   }
 
+  if (url === '/api/claims' && req.method === 'GET') return send(res, 200, read('claims'));
+
+  if (url === '/api/claims' && req.method === 'POST') {
+    return body(req, (j) => {
+      const questId = Number(j && j.questId);
+      const name = String((j && j.name) || '').trim();
+      const quest = read('quests').find(q => q.id === questId);
+      if (!quest || !quest.assignees.includes(name)) return send(res, 400, { error: 'invalid' });
+      const claims = read('claims');
+      if (claims.some(c => c.questId === questId && c.name === name && c.status !== 'rejected'))
+        return send(res, 200, { ok: true, duplicate: true });
+      claims.push({ id: Date.now(), questId, name, credit: quest.credit, title: quest.title, status: 'pending', time: new Date().toISOString() });
+      write('claims', claims);
+      send(res, 201, { ok: true });
+    });
+  }
+
+  if (url === '/api/claims/decide' && req.method === 'POST') {
+    return body(req, (j) => {
+      const status = j && j.status;
+      if (status !== 'approved' && status !== 'rejected') return send(res, 400, { error: 'bad status' });
+      const claims = read('claims');
+      const c = claims.find(x => x.id === Number(j.id));
+      if (!c) return send(res, 404, { error: 'not found' });
+      if (c.status !== 'pending') return send(res, 200, { ok: true, already: c.status });
+      c.status = status;
+      c.decidedAt = new Date().toISOString();
+      write('claims', claims);
+      send(res, 200, { ok: true });
+    });
+  }
+
+  if (url === '/api/balance' && req.method === 'GET') {
+    const name = new URL(req.url, 'http://x').searchParams.get('name') || '';
+    const credit = read('claims').filter(c => c.name === name && c.status === 'approved')
+      .reduce((s, c) => s + c.credit, 0);
+    return send(res, 200, { credit });
+  }
+
   if (url === '/' || url === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return res.end(fs.readFileSync(path.join(__dirname, 'index.html')));
