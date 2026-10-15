@@ -203,6 +203,92 @@ http.createServer((req, res) => {
     });
   }
 
+  if (url === '/api/sync/customer' && req.method === 'POST') {
+    return body(req, (j) => {
+      const name = String((j && j.name) || '').trim().slice(0, 60);
+      const status = (j && j.status) === 'rejected' ? 'rejected' : 'approved';
+      if (!name) return send(res, 400, { error: 'name required' });
+      const list = read('requests');
+      let r = list.find(x => x.name.toLowerCase() === name.toLowerCase());
+      if (!r) {
+        r = { id: Date.now(), name, status, time: new Date().toISOString(), restored: true };
+        list.push(r);
+        write('requests', list);
+        return send(res, 201, { ok: true, restored: true, request: r });
+      }
+      return send(res, 200, { ok: true, existing: true, request: r });
+    });
+  }
+
+  if (url === '/api/sync/backup' && req.method === 'POST') {
+    return body(req, (j) => {
+      if (!j) return send(res, 400, { error: 'data required' });
+      if (Array.isArray(j.requests) && j.requests.length) {
+        const current = read('requests');
+        const currentNames = new Set(current.map(x => x.name.toLowerCase()));
+        let added = 0;
+        j.requests.forEach(r => {
+          if (r && r.name && !currentNames.has(r.name.toLowerCase())) {
+            current.push(r);
+            currentNames.add(r.name.toLowerCase());
+            added++;
+          }
+        });
+        if (added > 0 || !current.length) write('requests', current);
+      }
+      if (Array.isArray(j.quests) && j.quests.length) {
+        const current = read('quests');
+        const currentIds = new Set(current.map(x => String(x.id)));
+        let added = 0;
+        j.quests.forEach(q => {
+          if (q && q.title && !currentIds.has(String(q.id))) {
+            current.push(q);
+            currentIds.add(String(q.id));
+            added++;
+          }
+        });
+        if (added > 0 || !current.length) write('quests', current);
+      }
+      if (Array.isArray(j.claims) && j.claims.length) {
+        const current = read('claims');
+        const currentIds = new Set(current.map(x => String(x.id)));
+        let added = 0;
+        j.claims.forEach(c => {
+          if (c && !currentIds.has(String(c.id))) {
+            current.push(c);
+            currentIds.add(String(c.id));
+            added++;
+          }
+        });
+        if (added > 0 || !current.length) write('claims', current);
+      }
+      if (Array.isArray(j.messages) && j.messages.length) {
+        const current = read('messages');
+        const currentIds = new Set(current.map(x => String(x.id)));
+        let added = 0;
+        j.messages.forEach(m => {
+          if (m && !currentIds.has(String(m.id))) {
+            current.push(m);
+            currentIds.add(String(m.id));
+            added++;
+          }
+        });
+        if (added > 0 || !current.length) write('messages', current);
+      }
+      send(res, 200, { ok: true, requestsCount: read('requests').length });
+    });
+  }
+
+  if (url === '/api/export' && req.method === 'GET') {
+    return send(res, 200, {
+      requests: read('requests'),
+      quests: read('quests'),
+      claims: read('claims'),
+      messages: read('messages'),
+      exportedAt: new Date().toISOString()
+    });
+  }
+
   if (url === '/' || url === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return res.end(fs.readFileSync(path.join(__dirname, 'index.html')));
