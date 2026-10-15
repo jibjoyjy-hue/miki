@@ -147,10 +147,63 @@ http.createServer((req, res) => {
     const name = new URL(req.url, 'http://x').searchParams.get('name') || '';
     const earned = read('claims').filter(c => c.name === name && c.status === 'approved')
       .reduce((s, c) => s + c.credit, 0);
+    const giftCredits = read('gifts')
+      .filter(g => Array.isArray(g.recipients) && g.recipients.includes(name))
+      .reduce((s, g) => s + (Number(g.credit) || 0), 0);
     const spent = read('redemptions').filter(r => r.user === name && r.status !== 'cancelled')
       .reduce((s, r) => s + r.credit, 0);
-    const credit = Math.max(0, earned - spent);
-    return send(res, 200, { credit, earned, spent });
+    const credit = Math.max(0, earned + giftCredits - spent);
+    return send(res, 200, { credit, earned, giftCredits, spent });
+  }
+
+  if (url === '/api/gifts' && req.method === 'GET') {
+    const user = new URL(req.url, 'http://x').searchParams.get('user') || '';
+    const all = read('gifts');
+    if (!user) return send(res, 200, all);
+    return send(res, 200, all.filter(g => Array.isArray(g.recipients) && g.recipients.includes(user)));
+  }
+
+  if (url === '/api/gifts' && req.method === 'POST') {
+    return body(req, (j) => {
+      const title = String((j && j.title) || '').trim().slice(0, 100);
+      const desc = String((j && j.desc) || '').trim().slice(0, 500);
+      const credit = Math.max(0, Math.floor(Number(j && j.credit) || 0));
+      const recipients = Array.isArray(j && j.recipients)
+        ? j.recipients.map(a => String(a).slice(0, 60)).slice(0, 200) : [];
+      if (!title) return send(res, 400, { error: 'title required' });
+      if (!recipients.length) return send(res, 400, { error: 'recipients required' });
+      const list = read('gifts');
+      const item = { id: Date.now(), title, desc, credit, recipients, time: new Date().toISOString() };
+      list.push(item);
+      write('gifts', list);
+
+      // Send chat notification to each recipient
+      const msgs = read('messages');
+      recipients.forEach(name => {
+        msgs.push({
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          user: name,
+          sender: 'admin',
+          text: '🎁 คุณได้รับของขวัญจากผู้ดูแล: "' + title + '" (+🪙 ' + credit + ' เครดิต)' + (desc ? ' - ' + desc : ''),
+          time: new Date().toISOString(),
+          read: false
+        });
+      });
+      write('messages', msgs);
+
+      send(res, 201, { ok: true, gift: item });
+    });
+  }
+
+  if (url === '/api/gifts/delete' && req.method === 'POST') {
+    return body(req, (j) => {
+      const id = Number(j && j.id);
+      if (!id) return send(res, 400, { error: 'id required' });
+      let list = read('gifts');
+      list = list.filter(x => x.id !== id);
+      write('gifts', list);
+      send(res, 200, { ok: true });
+    });
   }
 
   if (url === '/api/shop/items' && req.method === 'GET') {
@@ -425,6 +478,19 @@ http.createServer((req, res) => {
         });
         if (added > 0 || !current.length) write('redemptions', current);
       }
+      if (Array.isArray(j.gifts) && j.gifts.length) {
+        const current = read('gifts');
+        const currentIds = new Set(current.map(x => String(x.id)));
+        let added = 0;
+        j.gifts.forEach(g => {
+          if (g && g.title && !currentIds.has(String(g.id))) {
+            current.push(g);
+            currentIds.add(String(g.id));
+            added++;
+          }
+        });
+        if (added > 0 || !current.length) write('gifts', current);
+      }
       send(res, 200, { ok: true, requestsCount: read('requests').length });
     });
   }
@@ -437,6 +503,7 @@ http.createServer((req, res) => {
       messages: read('messages'),
       shop: readShop(),
       redemptions: read('redemptions'),
+      gifts: read('gifts'),
       exportedAt: new Date().toISOString()
     });
   }

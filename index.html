@@ -253,7 +253,35 @@
           </div>
         </div>
       </div>
-      <div class="page" id="p-gift"><div class="pic">🎁</div><h2>Gift</h2></div>
+      <div class="page" id="p-gift" style="padding:56px 16px 12px;justify-content:flex-start">
+        <div id="adminGiftMain" class="hbox" style="width:100%;max-height:620px;overflow-y:auto;padding-bottom:12px">
+          <div class="svhead"><span style="width:50px"></span><h2>🎁 ส่งของขวัญ</h2><span style="width:50px"></span></div>
+          
+          <div class="qcard" style="display:flex;flex-direction:column;gap:12px">
+            <b class="lbl" style="font-size:16px">กรอกข้อมูลของขวัญ</b>
+            <input id="giftTitle" type="text" placeholder="รายการ (เช่น ของขวัญพิเศษ, โบนัสต้อนรับ)" class="fl">
+            <textarea id="giftDesc" placeholder="คำอธิบาย (เช่น ขอบคุณที่ร่วมสนุกกับเรา)" rows="2" class="fl"></textarea>
+            <input id="giftCredit" type="number" min="1" placeholder="เครดิต (🪙 เช่น 50, 100)" class="fl">
+            
+            <div class="svhead" style="margin-top:6px">
+              <b class="lbl">ส่งให้ลูกค้า (เลือกคนได้)</b>
+              <span>
+                <button type="button" class="mini" onclick="toggleAllGiftCust(true)">เลือกทั้งหมด</button>
+                <button type="button" class="mini" onclick="toggleAllGiftCust(false)">ล้าง</button>
+              </span>
+            </div>
+            <div id="giftCustList" style="display:flex;flex-direction:column;gap:8px;max-height:180px;overflow-y:auto"></div>
+            
+            <div class="err" id="giftErr"></div>
+            <button class="btn" id="giftSendBtn" onclick="sendAdminGift()">🎁 ส่งของขวัญให้ลูกค้า</button>
+          </div>
+
+          <div class="svhead" style="margin-top:10px">
+            <b class="lbl" style="font-size:15px">📜 ประวัติการส่งของขวัญล่าสุด</b>
+          </div>
+          <div id="adminGiftHistoryList" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+      </div>
       <div class="page" id="p-shop" style="padding:56px 16px 12px;justify-content:flex-start">
         <div id="adminShopMain" class="hbox" style="width:100%;max-height:600px;overflow-y:auto;padding-bottom:12px">
           <div class="svhead"><span style="width:50px"></span><h2>Shop</h2><span style="width:50px"></span></div>
@@ -319,6 +347,7 @@
             <button class="mini" style="background:#fff;border:1px solid #e3dcff;padding:6px 12px;border-radius:12px;cursor:pointer;color:#8a88a0" onclick="custLogout()">ออกจากระบบ</button>
           </div>
           <div class="wallet"><small>เครดิตของฉัน</small><h1>🪙 <span id="myCredit">0</span></h1></div>
+          <div id="myGifts" style="display:flex;flex-direction:column;gap:10px"></div>
           <b class="lbl">ภารกิจของฉัน</b>
           <div id="myQuests"></div>
         </div>
@@ -789,6 +818,7 @@
     document.querySelectorAll('#main .page').forEach(p=>p.classList.toggle('on',p.id==='p-'+name));
     document.querySelectorAll('#main .tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
     if(name==='quest') loadQuests();
+    if(name==='gift') loadAdminGifts();
     if(name==='shop') loadAdminShop();
     if(name==='chat'){
       loadAdminTabChatList();
@@ -900,6 +930,28 @@
     document.getElementById('myCredit').textContent=credit;
     const shopBal = document.getElementById('shopCustBalance');
     if(shopBal) shopBal.textContent=credit;
+
+    const gBox = document.getElementById('myGifts');
+    if(gBox){
+      gBox.innerHTML = '';
+      try{
+        const myGifts = await (await fetch('/api/gifts?user=' + encodeURIComponent(me), {cache:'no-store'})).json();
+        if(myGifts && myGifts.length){
+          myGifts.slice(-5).reverse().forEach(g => {
+            const gd = document.createElement('div');
+            gd.className = 'qcard';
+            gd.style.borderLeft = '4px solid #6a4cff';
+            gd.style.background = 'linear-gradient(135deg,#faf8ff,#f5f0ff)';
+            const timeStr = new Date(g.time).toLocaleString('th-TH', {dateStyle:'short', timeStyle:'short'});
+            gd.innerHTML = '<div class="qtop"><b style="color:#6a4cff">🎁 ' + esc(g.title) + '</b><span class="badge got">✓ ได้รับ +🪙 ' + g.credit + '</span></div>'
+              + (g.desc ? '<p style="color:#6f6d85;margin:4px 0">' + esc(g.desc) + '</p>' : '')
+              + '<div class="who">ได้รับจากแอดมินเมื่อ: ' + timeStr + '</div>';
+            gBox.appendChild(gd);
+          });
+        }
+      }catch(ge){}
+    }
+
     box.innerHTML=list.length?'':'<div class="empty">ยังไม่มีภารกิจ</div>';
     list.forEach(q=>{
       const mine=claims.filter(c=>c.questId===q.id);
@@ -1169,6 +1221,127 @@
       autoSyncAdminBackup();
     }
   }
+  // --- Admin Gift Logic ---
+  async function loadAdminGifts(){
+    loadGiftCustomers();
+    loadAdminGiftHistory();
+  }
+
+  async function loadGiftCustomers(){
+    const box = document.getElementById('giftCustList');
+    if(!box) return;
+    box.innerHTML = '<div class="empty" style="padding:15px 0">กำลังโหลดรายชื่อ...</div>';
+    let names = [];
+    try{
+      const allReqs = await (await fetch('/api/requests', {cache: 'no-store'})).json();
+      names = [...new Set(allReqs.filter(r => r.status === 'approved' || !r.status).map(r => r.name))];
+    }catch(e){}
+
+    if(!names.length){
+      box.innerHTML = '<div class="empty" style="padding:15px 0">ยังไม่มีรายชื่อลูกค้า</div>';
+      return;
+    }
+    box.innerHTML = '';
+    names.forEach(n => {
+      const l = document.createElement('label');
+      l.className = 'cust';
+      l.style.padding = '8px 12px';
+      l.innerHTML = '<input type="checkbox" value=""><span></span>';
+      l.querySelector('input').value = n;
+      l.querySelector('span').textContent = n;
+      box.appendChild(l);
+    });
+  }
+
+  function toggleAllGiftCust(on){
+    document.querySelectorAll('#giftCustList input').forEach(c => c.checked = on);
+  }
+
+  let sendingGift = false;
+  async function sendAdminGift(){
+    if(sendingGift) return;
+    const title = document.getElementById('giftTitle').value.trim();
+    const desc = document.getElementById('giftDesc').value.trim();
+    const credit = Math.max(0, Math.floor(Number(document.getElementById('giftCredit').value) || 0));
+    const recipients = [...document.querySelectorAll('#giftCustList input:checked')].map(c => c.value);
+    const err = document.getElementById('giftErr');
+
+    if(!title){ err.textContent = 'กรุณาใส่ชื่อรายการของขวัญ'; return; }
+    if(!recipients.length){ err.textContent = 'กรุณาเลือกลูกค้าอย่างน้อย 1 คน'; return; }
+
+    sendingGift = true;
+    const btn = document.getElementById('giftSendBtn');
+    btn.disabled = true; btn.textContent = 'กำลังส่งของขวัญ...';
+    err.textContent = '';
+    try{
+      const res = await fetch('/api/gifts', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, desc, credit, recipients })
+      });
+      if(!res.ok) throw 0;
+      showToast('🎁 ส่งของขวัญให้ ' + recipients.length + ' คนสำเร็จ!');
+      document.getElementById('giftTitle').value = '';
+      document.getElementById('giftDesc').value = '';
+      document.getElementById('giftCredit').value = '';
+      toggleAllGiftCust(false);
+      loadAdminGiftHistory();
+    }catch(e){
+      err.textContent = 'ส่งไม่สำเร็จ ลองใหม่อีกครั้ง';
+    }finally{
+      sendingGift = false;
+      btn.disabled = false;
+      btn.textContent = '🎁 ส่งของขวัญให้ลูกค้า';
+    }
+  }
+
+  async function loadAdminGiftHistory(){
+    const box = document.getElementById('adminGiftHistoryList');
+    if(!box) return;
+    let list = [];
+    try{
+      list = (await (await fetch('/api/gifts', {cache: 'no-store'})).json()).reverse();
+    }catch(e){ box.innerHTML = '<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
+
+    if(list.length) saveLocalBackup('gifts', list);
+
+    if(!list.length){
+      box.innerHTML = '<div class="empty">ยังไม่มีประวัติการส่งของขวัญ</div>';
+      return;
+    }
+    box.innerHTML = '';
+    list.forEach(g => {
+      const d = document.createElement('div');
+      d.className = 'qcard';
+      const timeStr = new Date(g.time).toLocaleString('th-TH', {dateStyle:'short', timeStyle:'short'});
+      d.innerHTML =
+        '<div class="qtop"><b style="color:#2b2a3d">🎁 ' + esc(g.title) + '</b><span class="credit">🪙 ' + g.credit + '</span></div>'
+        + (g.desc ? '<p style="color:#6f6d85;margin:6px 0">' + esc(g.desc) + '</p>' : '')
+        + '<div class="who">ส่งให้: ' + (g.recipients && g.recipients.length ? g.recipients.map(r => '<span class="chip">' + esc(r) + '</span>').join('') : '<i>ไม่ระบุ</i>') + ' • ' + timeStr + '</div>'
+        + '<div class="acts" style="margin-top:8px">'
+        +   '<button class="no-btn" style="flex:none;padding:6px 14px;font-size:12px;opacity:.8">ลบรายการ</button>'
+        + '</div>';
+
+      d.querySelector('.no-btn').onclick = () => deleteAdminGift(g.id, g.title);
+      box.appendChild(d);
+    });
+  }
+
+  async function deleteAdminGift(id, title){
+    if(!confirm('ยืนยันลบรายการของขวัญ "' + title + '" หรือไม่?')) return;
+    try{
+      const res = await fetch('/api/gifts/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id })
+      });
+      if(res.ok){
+        showToast('ลบรายการของขวัญเรียบร้อย');
+        loadAdminGiftHistory();
+      }
+    }catch(e){}
+  }
+
   // --- Admin Shop Logic ---
   let currentAdminShopTab = 'items';
   function switchAdminShopTab(tab){
