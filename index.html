@@ -91,10 +91,13 @@
   .ok .sub{font-size:15px;font-weight:400;color:#8a88a0;margin-top:8px}
   .page .pic{width:96px;height:96px;border-radius:30px;background:linear-gradient(135deg,#6a4cff,#a46bff);display:grid;place-items:center;font-size:48px;box-shadow:0 14px 28px rgba(106,76,255,.35)}
   .tabbar{margin:0 14px 14px;height:68px;background:#fff;border-radius:24px;box-shadow:0 8px 24px rgba(80,50,180,.18);display:flex;justify-content:space-around;align-items:center}
-  .tabbar button{flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:600;color:#9a98ad;transition:.2s}
+  .tabbar button{flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:600;color:#9a98ad;transition:.2s;position:relative}
   .tabbar button i{font-style:normal;font-size:22px;filter:grayscale(1);opacity:.6;transition:.2s}
   .tabbar button.on{color:#6a4cff}
   .tabbar button.on i{filter:none;opacity:1;transform:translateY(-2px)}
+  .tabbar-badge{position:absolute;top:4px;right:calc(50% - 18px);background:#e5484d;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;line-height:16px;border-radius:10px;text-align:center;padding:0 4px;box-shadow:0 2px 6px rgba(229,72,77,.4)}
+  .badge-pulse{animation:pulseBadge 1.2s infinite alternate}
+  @keyframes pulseBadge{from{transform:scale(1)}to{transform:scale(1.2)}}
   .toast{position:absolute;top:28px;left:50%;transform:translateX(-50%) translateY(-20px);background:rgba(34,197,139,.95);color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.15);opacity:0;transition:.3s;pointer-events:none;z-index:99}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .chat-wrap{display:flex;flex-direction:column;width:100%;height:100%;background:#fff;border-radius:24px;box-shadow:0 8px 24px rgba(80,50,180,.1);overflow:hidden}
@@ -189,12 +192,29 @@
           <button class="btn" id="qSave" onclick="saveQuest()">บันทึกภารกิจ</button>
         </div>
       </div>
+      <div class="page" id="p-chat" style="padding:56px 16px 12px;justify-content:flex-start">
+        <div id="adminTabChatListPane" class="hbox" style="width:100%">
+          <div class="svhead"><span style="width:50px"></span><h2>แชทลูกค้า</h2><span style="width:50px"></span></div>
+          <div id="adminTabChatList" style="display:flex;flex-direction:column;gap:10px;max-height:600px;overflow-y:auto"></div>
+        </div>
+        <div id="adminTabChatDetailPane" class="hbox" style="display:none;width:100%">
+          <div class="svhead"><button class="back" onclick="closeAdminTabChatDetail()">← กลับ</button><h2 id="adminTabChatDetailTitle" style="font-size:18px">แชท</h2><span style="width:50px"></span></div>
+          <div class="chat-wrap" style="height:550px">
+            <div id="adminTabChatDetailMsgs" class="chat-msgs" style="max-height:470px"></div>
+            <div class="chat-input-row">
+              <input id="adminTabChatDetailInput" type="text" placeholder="พิมพ์ข้อความตอบกลับ..." onkeydown="if(event.key==='Enter')sendAdminTabChatDetailReply()">
+              <button class="chat-send" onclick="sendAdminTabChatDetailReply()">ส่ง</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="page" id="p-gift"><div class="pic">🎁</div><h2>Gift</h2></div>
       <div class="page" id="p-shop"><div class="pic">🛍️</div><h2>Shop</h2></div>
     </div>
     <div class="tabbar">
       <button class="on" data-tab="home" onclick="tab('home')"><i>🏠</i>Home</button>
       <button data-tab="quest" onclick="tab('quest')"><i>📜</i>Quest</button>
+      <button data-tab="chat" onclick="tab('chat')"><i>💬</i>Chat<span id="tabChatBadge" class="tabbar-badge" style="display:none">0</span></button>
       <button data-tab="gift" onclick="tab('gift')"><i>🎁</i>Gift</button>
       <button data-tab="shop" onclick="tab('shop')"><i>🛍️</i>Shop</button>
     </div>
@@ -530,10 +550,108 @@
       setTimeout(()=>show('main'),1500);
     } else document.getElementById('err').textContent='ข้อความไม่ถูกต้อง';
   }
+  let adminTabChatInterval = null;
   function tab(name){
+    clearInterval(adminTabChatInterval);
     document.querySelectorAll('#main .page').forEach(p=>p.classList.toggle('on',p.id==='p-'+name));
     document.querySelectorAll('#main .tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
     if(name==='quest') loadQuests();
+    if(name==='chat'){
+      loadAdminTabChatList();
+      adminTabChatInterval = setInterval(()=>{
+        if(currentAdminTabChatUser) loadAdminTabChatDetailMsgs();
+        else loadAdminTabChatList();
+      },2500);
+    }
+  }
+
+  let currentAdminTabChatUser = '';
+  async function loadAdminTabChatList(){
+    const box = document.getElementById('adminTabChatList');
+    if(!box) return;
+    let list = [];
+    try{
+      list = await (await fetch('/api/messages/requests',{cache:'no-store'})).json();
+    }catch(e){ box.innerHTML='<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
+
+    box.innerHTML = list.length ? '' : '<div class="empty">💬 ยังไม่มีข้อความจากลูกค้า</div>';
+    list.forEach(r => {
+      const d = document.createElement('div');
+      d.className = 'chat-req-card' + (r.unread ? ' has-unread' : '');
+      const timeStr = new Date(r.lastTime).toLocaleString('th-TH', {dateStyle:'short', timeStyle:'short'});
+      d.innerHTML = '<div class="chat-av">' + esc(r.user.charAt(0).toUpperCase()) + '</div>'
+        + '<div class="rt" style="flex:1;overflow:hidden">'
+        +   '<div style="display:flex;justify-content:space-between;align-items:center">'
+        +     '<b>' + esc(r.user) + '</b>'
+        +     '<small style="color:#a8a5b8;font-size:11px">' + timeStr + '</small>'
+        +   '</div>'
+        +   '<p style="font-size:13px;color:#6f6d85;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.lastMsg) + '</p>'
+        + '</div>'
+        + (r.unread ? '<span class="unread-pill">' + r.unread + ' ใหม่</span>' : '');
+      d.onclick = () => openAdminTabChatDetail(r.user);
+      box.appendChild(d);
+    });
+  }
+
+  function openAdminTabChatDetail(user){
+    currentAdminTabChatUser = user;
+    document.getElementById('adminTabChatListPane').style.display = 'none';
+    document.getElementById('adminTabChatDetailPane').style.display = 'flex';
+    document.getElementById('adminTabChatDetailTitle').textContent = 'แชทกับ: ' + user;
+    fetch('/api/messages/read', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({user})
+    }).catch(()=>{});
+    loadAdminTabChatDetailMsgs();
+    checkAdminUnread();
+  }
+
+  function closeAdminTabChatDetail(){
+    currentAdminTabChatUser = '';
+    document.getElementById('adminTabChatDetailPane').style.display = 'none';
+    document.getElementById('adminTabChatListPane').style.display = 'flex';
+    loadAdminTabChatList();
+    checkAdminUnread();
+  }
+
+  async function loadAdminTabChatDetailMsgs(){
+    if(!currentAdminTabChatUser) return;
+    const box = document.getElementById('adminTabChatDetailMsgs');
+    let list = [];
+    try{
+      list = await (await fetch('/api/messages?user='+encodeURIComponent(currentAdminTabChatUser),{cache:'no-store'})).json();
+    }catch(e){ return; }
+    const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 60;
+    box.innerHTML = '';
+    list.forEach(m => {
+      const d = document.createElement('div');
+      const isMe = m.sender === 'admin';
+      d.className = 'msg-row ' + (isMe ? 'me' : 'them');
+      const timeStr = new Date(m.time).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+      d.innerHTML = '<div class="msg-bubble">' + esc(m.text) + '</div><small class="msg-time">' + (isMe ? 'คุณ (แอดมิน) • ' : esc(currentAdminTabChatUser) + ' • ') + timeStr + '</small>';
+      box.appendChild(d);
+    });
+    if(isAtBottom) box.scrollTop = box.scrollHeight;
+  }
+
+  let sendingAdminTabReply = false;
+  async function sendAdminTabChatDetailReply(){
+    if(sendingAdminTabReply || !currentAdminTabChatUser) return;
+    const input = document.getElementById('adminTabChatDetailInput');
+    const text = input.value.trim();
+    if(!text) return;
+    sendingAdminTabReply = true;
+    input.value = '';
+    try{
+      await fetch('/api/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user: currentAdminTabChatUser, sender:'admin', text})
+      });
+      loadAdminTabChatDetailMsgs();
+    }catch(e){}
+    finally{ sendingAdminTabReply = false; }
   }
   async function loadMyQuests(){
     const box=document.getElementById('myQuests');
@@ -636,6 +754,13 @@
     try{
       const reqs = await (await fetch('/api/messages/requests',{cache:'no-store'})).json();
       const unreadCount = reqs.reduce((s, r) => s + (r.unread || 0), 0);
+      
+      const tabBadge = document.getElementById('tabChatBadge');
+      if(tabBadge){
+        tabBadge.textContent = unreadCount;
+        tabBadge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
+        tabBadge.classList.toggle('badge-pulse', unreadCount > 0);
+      }
       const badge = document.getElementById('adminChatBadge');
       if(badge){
         badge.textContent = unreadCount;
@@ -651,6 +776,15 @@
         if(latest && latest.sender === 'user' && !latest.read && latest.id > lastNewestMsgId){
           lastNewestMsgId = latest.id;
           showToast('💬 ' + latest.user + ': ' + latest.text);
+          
+          const pChat = document.getElementById('p-chat');
+          if(pChat && pChat.classList.contains('on')){
+            if(currentAdminTabChatUser === latest.user){
+              loadAdminTabChatDetailMsgs();
+            } else {
+              loadAdminTabChatList();
+            }
+          }
           if(document.getElementById('statusView').style.display!=='none' && currentReqTab==='chat'){
             loadChatRequests();
           }
