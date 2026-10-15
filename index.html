@@ -227,7 +227,7 @@
           <div id="approvedClaimList" style="display:flex;flex-direction:column;gap:10px"></div>
         </div>
         <div id="questForm" class="hbox" style="display:none">
-          <div class="svhead"><button class="back" onclick="closeQuestForm()">← กลับ</button><h2>เพิ่มภารกิจ</h2><span style="width:50px"></span></div>
+          <div class="svhead"><button class="back" onclick="closeQuestForm()">← กลับ</button><h2 id="qFormTitle">เพิ่มภารกิจ</h2><span style="width:50px"></span></div>
           <input id="qTitle" type="text" placeholder="รายการ" class="fl">
           <textarea id="qDesc" placeholder="คำอธิบาย" rows="3" class="fl"></textarea>
           <input id="qCredit" type="number" min="0" placeholder="เครดิตที่ได้" class="fl">
@@ -286,15 +286,17 @@
         <div id="adminShopMain" class="hbox" style="width:100%;max-height:600px;overflow-y:auto;padding-bottom:12px">
           <div class="svhead"><span style="width:50px"></span><h2>Shop</h2><span style="width:50px"></span></div>
           <button class="btn" onclick="openAdminShopForm()">＋ เพิ่มของรางวัลใหม่</button>
-          <div style="display:flex;gap:8px;background:#f5f0ff;padding:4px;border-radius:14px">
+          <div style="display:flex;gap:6px;background:#f5f0ff;padding:4px;border-radius:14px">
             <button id="adminShopTabItemsBtn" class="seg-btn active" onclick="switchAdminShopTab('items')">🎁 ของรางวัล <span id="adminShopItemsCount"></span></button>
             <button id="adminShopTabOrdersBtn" class="seg-btn" onclick="switchAdminShopTab('orders')">📦 ลูกค้าแลก <span id="adminShopOrdersCount"></span></button>
+            <button id="adminShopTabWishesBtn" class="seg-btn" onclick="switchAdminShopTab('wishes')">💡 รีเควส <span id="adminShopWishesCount"></span></button>
           </div>
           <div id="adminShopItemList" class="shop-list"></div>
           <div id="adminShopOrdersList" class="shop-list" style="display:none"></div>
+          <div id="adminShopWishesList" class="shop-list" style="display:none"></div>
         </div>
         <div id="adminShopForm" class="hbox" style="display:none;width:100%;max-height:600px;overflow-y:auto;padding-bottom:12px">
-          <div class="svhead"><button class="back" onclick="closeAdminShopForm()">← กลับ</button><h2>เพิ่มของรางวัล</h2><span style="width:50px"></span></div>
+          <div class="svhead"><button class="back" onclick="closeAdminShopForm()">← กลับ</button><h2 id="shopFormTitle">เพิ่มของรางวัล</h2><span style="width:50px"></span></div>
           <input id="shopNewTitle" type="text" placeholder="ชื่อของรางวัล (เช่น คูปองส่วนลด 20 บาท)" class="fl">
           <textarea id="shopNewDesc" placeholder="คำอธิบาย / เงื่อนไขการใช้" rows="2" class="fl"></textarea>
           <input id="shopNewCredit" type="number" min="1" placeholder="เครดิตที่ต้องใช้ (🪙)" class="fl">
@@ -378,6 +380,7 @@
             </div>
             <button class="mini" style="background:rgba(255,255,255,.25);color:#fff;border:none;padding:6px 12px;border-radius:12px;cursor:pointer" onclick="ctab('home')">ทำเควสเพิ่ม ➜</button>
           </div>
+          <button class="btn" style="background:linear-gradient(135deg,#ff6b9a,#ffa36b);box-shadow:0 8px 20px rgba(255,107,154,.3);font-size:14px;padding:12px 16px;border-radius:16px;width:100%" onclick="openWishModal()">💡 รีเควสของที่อยากให้เพิ่มในร้าน</button>
           <div style="display:flex;gap:8px;background:#f5f0ff;padding:4px;border-radius:14px">
             <button id="custShopTabItemsBtn" class="seg-btn active" onclick="switchCustShopTab('items')">🎁 ของรางวัลที่จะแลก</button>
             <button id="custShopTabHistoryBtn" class="seg-btn" onclick="switchCustShopTab('history')">📋 ประวัติการแลก <span id="custShopHistoryBadge"></span></button>
@@ -408,6 +411,21 @@
       <div style="display:flex;gap:10px;margin-top:16px">
         <button class="btn" style="flex:1;background:#ece8f5;color:#6f6d85;box-shadow:none" onclick="closeRedeemModal()">ยกเลิก</button>
         <button class="btn" style="flex:1" id="confirmRedeemBtn" onclick="submitRedeem()">ยืนยันแลก</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="shopWishModal" class="modal-overlay" style="display:none">
+    <div class="modal-card">
+      <div class="modal-icon" style="background:linear-gradient(135deg,#ffe8ec,#ffd6e0)">💡</div>
+      <h3 style="font-size:18px;margin-bottom:6px">รีเควสของรางวัล</h3>
+      <p style="color:#6f6d85;font-size:13px;line-height:1.4">บอกของรางวัลที่คุณอยากให้แอดมินนำมาลงใน Shop</p>
+      <input id="wishTitle" type="text" placeholder="ชื่อของที่อยากให้เพิ่ม (เช่น ชานมไข่มุก, สติ๊กเกอร์)" class="fl" style="margin-top:10px">
+      <textarea id="wishDesc" placeholder="รายละเอียด หรือ เหตุผลที่อยากได้ (ไม่บังคับ)" rows="2" class="fl" style="margin-top:8px"></textarea>
+      <div class="err" id="wishErr"></div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn" style="flex:1;background:#ece8f5;color:#6f6d85;box-shadow:none" onclick="closeWishModal()">ยกเลิก</button>
+        <button class="btn" style="flex:1;background:linear-gradient(135deg,#ff6b9a,#ffa36b)" id="submitWishBtn" onclick="submitWish()">ส่งคำขอ</button>
       </div>
     </div>
   </div>
@@ -1118,7 +1136,14 @@
       d.className='qcard';
       d.innerHTML='<div class="qtop"><b>'+esc(q.title)+'</b><span class="credit">🪙 '+q.credit+'</span></div>'
         +(q.desc?'<p>'+esc(q.desc)+'</p>':'')
-        +'<div class="who">ส่งให้: '+(q.assignees.length?q.assignees.map(a=>'<span class="chip">'+esc(a)+'</span>').join(''):'<i>ยังไม่เลือก</i>')+'</div>';
+        +'<div class="who">ส่งให้: '+(q.assignees.length?q.assignees.map(a=>'<span class="chip">'+esc(a)+'</span>').join(''):'<i>ยังไม่เลือก</i>')+'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:10px">'
+        +  '<button class="mini" style="background:#efeaff;color:#6a4cff;padding:6px 12px;border-radius:10px;cursor:pointer">✏️ แก้ไข</button>'
+        +  '<button class="mini" style="background:#fee2e2;color:#e5484d;padding:6px 12px;border-radius:10px;cursor:pointer">🗑️ ลบ</button>'
+        +'</div>';
+      const btns = d.querySelectorAll('button.mini');
+      btns[0].onclick = () => editQuest(q);
+      btns[1].onclick = () => deleteQuest(q.id, q.title);
       box.appendChild(d);
     });
     if(abox){
@@ -1151,11 +1176,33 @@
       && document.getElementById('p-quest').classList.contains('on')
       && document.getElementById('questMain').style.display!=='none') loadQuests();
   },5000);
+
+  let editingQuestId = null;
   async function openQuestForm(){
+    editingQuestId = null;
     document.getElementById('questMain').style.display='none';
     document.getElementById('questForm').style.display='flex';
+    document.getElementById('qFormTitle').textContent = 'เพิ่มภารกิจ';
+    document.getElementById('qSave').textContent = 'บันทึกภารกิจ';
     ['qTitle','qDesc','qCredit'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('qErr').textContent='';
+    await loadCustCheckboxes([]);
+  }
+
+  async function editQuest(q){
+    editingQuestId = q.id;
+    document.getElementById('questMain').style.display='none';
+    document.getElementById('questForm').style.display='flex';
+    document.getElementById('qFormTitle').textContent = 'แก้ไขภารกิจ';
+    document.getElementById('qSave').textContent = 'บันทึกการแก้ไข';
+    document.getElementById('qTitle').value = q.title || '';
+    document.getElementById('qDesc').value = q.desc || '';
+    document.getElementById('qCredit').value = q.credit || 0;
+    document.getElementById('qErr').textContent='';
+    await loadCustCheckboxes(q.assignees || []);
+  }
+
+  async function loadCustCheckboxes(selectedNames){
     const box=document.getElementById('custList');
     box.innerHTML='<div class="empty">กำลังโหลด...</div>';
     let names=[];
@@ -1169,12 +1216,30 @@
       l.className='cust';
       l.innerHTML='<input type="checkbox" value=""><span></span>';
       l.querySelector('input').value=n;
+      l.querySelector('input').checked=selectedNames.includes(n);
       l.querySelector('span').textContent=n;
       box.appendChild(l);
     });
   }
+
+  async function deleteQuest(id, title){
+    if(!confirm('ยืนยันลบภารกิจ "' + title + '" หรือไม่?')) return;
+    try{
+      const res = await fetch('/api/quests/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id })
+      });
+      if(res.ok){
+        showToast('ลบภารกิจเรียบร้อย');
+        loadQuests();
+      }
+    }catch(e){}
+  }
+
   function toggleAll(on){ document.querySelectorAll('#custList input').forEach(c=>c.checked=on); }
   function closeQuestForm(){
+    editingQuestId = null;
     document.getElementById('questForm').style.display='none';
     document.getElementById('questMain').style.display='flex';
     loadQuests();
@@ -1190,12 +1255,25 @@
     const btn=document.getElementById('qSave');
     btn.disabled=true; btn.textContent='กำลังบันทึก...';
     try{
-      const r=await fetch('/api/quests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        title,desc:document.getElementById('qDesc').value,credit:document.getElementById('qCredit').value,assignees})});
+      const url = editingQuestId ? '/api/quests/update' : '/api/quests';
+      const bodyPayload = {
+        title,
+        desc: document.getElementById('qDesc').value,
+        credit: document.getElementById('qCredit').value,
+        assignees
+      };
+      if(editingQuestId) bodyPayload.id = editingQuestId;
+
+      const r=await fetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(bodyPayload)
+      });
       if(!r.ok) throw 0;
+      showToast(editingQuestId ? '✓ บันทึกการแก้ไขภารกิจสำเร็จ!' : '✓ เพิ่มภารกิจใหม่สำเร็จ!');
       closeQuestForm();
     }catch(e){ err.textContent='บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง'; }
-    finally{ savingQ=false; btn.disabled=false; btn.textContent='บันทึกภารกิจ'; }
+    finally{ savingQ=false; btn.disabled=false; btn.textContent=editingQuestId ? 'บันทึกการแก้ไข' : 'บันทึกภารกิจ'; }
   }
   document.getElementById('questMain') && loadQuests();
   async function checkAutoLogin(){
@@ -1344,19 +1422,28 @@
 
   // --- Admin Shop Logic ---
   let currentAdminShopTab = 'items';
+  let editingShopItemId = null;
+  let adminShopItemsData = [];
+
   function switchAdminShopTab(tab){
     currentAdminShopTab = tab;
     document.getElementById('adminShopTabItemsBtn').classList.toggle('active', tab === 'items');
     document.getElementById('adminShopTabOrdersBtn').classList.toggle('active', tab === 'orders');
+    document.getElementById('adminShopTabWishesBtn').classList.toggle('active', tab === 'wishes');
     document.getElementById('adminShopItemList').style.display = tab === 'items' ? 'flex' : 'none';
     document.getElementById('adminShopOrdersList').style.display = tab === 'orders' ? 'flex' : 'none';
+    document.getElementById('adminShopWishesList').style.display = tab === 'wishes' ? 'flex' : 'none';
     if(tab === 'items') loadAdminShopItems();
-    else loadAdminShopOrders();
+    else if(tab === 'orders') loadAdminShopOrders();
+    else if(tab === 'wishes') loadAdminShopWishes();
   }
 
   function openAdminShopForm(){
+    editingShopItemId = null;
     document.getElementById('adminShopMain').style.display = 'none';
     document.getElementById('adminShopForm').style.display = 'flex';
+    document.getElementById('shopFormTitle').textContent = 'เพิ่มของรางวัล';
+    document.getElementById('shopSaveBtn').textContent = 'บันทึกของรางวัล';
     document.getElementById('shopNewTitle').value = '';
     document.getElementById('shopNewDesc').value = '';
     document.getElementById('shopNewCredit').value = '';
@@ -1365,7 +1452,22 @@
     document.getElementById('shopFormErr').textContent = '';
   }
 
+  function editAdminShopItem(item){
+    editingShopItemId = item.id;
+    document.getElementById('adminShopMain').style.display = 'none';
+    document.getElementById('adminShopForm').style.display = 'flex';
+    document.getElementById('shopFormTitle').textContent = 'แก้ไขของรางวัล';
+    document.getElementById('shopSaveBtn').textContent = 'บันทึกการแก้ไข';
+    document.getElementById('shopNewTitle').value = item.title || '';
+    document.getElementById('shopNewDesc').value = item.desc || '';
+    document.getElementById('shopNewCredit').value = item.credit || '';
+    document.getElementById('shopNewStock').value = typeof item.stock === 'number' ? item.stock : 20;
+    document.getElementById('shopNewIcon').value = item.icon || '🎁';
+    document.getElementById('shopFormErr').textContent = '';
+  }
+
   function closeAdminShopForm(){
+    editingShopItemId = null;
     document.getElementById('adminShopForm').style.display = 'none';
     document.getElementById('adminShopMain').style.display = 'flex';
     loadAdminShop();
@@ -1388,20 +1490,24 @@
     const btn = document.getElementById('shopSaveBtn');
     btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
     try{
-      const res = await fetch('/api/shop/items', {
+      const url = editingShopItemId ? '/api/shop/items/update' : '/api/shop/items';
+      const bodyPayload = { title, desc, credit, stock, icon };
+      if(editingShopItemId) bodyPayload.id = editingShopItemId;
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ title, desc, credit, stock, icon })
+        body: JSON.stringify(bodyPayload)
       });
       if(!res.ok) throw 0;
-      showToast('✓ เพิ่มของรางวัลสำเร็จ!');
+      showToast(editingShopItemId ? '✓ บันทึกการแก้ไขของรางวัลสำเร็จ!' : '✓ เพิ่มของรางวัลสำเร็จ!');
       closeAdminShopForm();
     }catch(e){
       err.textContent = 'บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง';
     }finally{
       savingShopItem = false;
       btn.disabled = false;
-      btn.textContent = 'บันทึกของรางวัล';
+      btn.textContent = editingShopItemId ? 'บันทึกการแก้ไข' : 'บันทึกของรางวัล';
     }
   }
 
@@ -1438,6 +1544,7 @@
   async function loadAdminShop(){
     loadAdminShopItems();
     loadAdminShopOrders();
+    loadAdminShopWishes();
   }
 
   async function loadAdminShopItems(){
@@ -1446,6 +1553,7 @@
     let list = [];
     try{
       list = await (await fetch('/api/shop/items', {cache: 'no-store'})).json();
+      adminShopItemsData = list;
     }catch(e){ box.innerHTML = '<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
     
     if(list.length) saveLocalBackup('shop', list);
@@ -1480,12 +1588,79 @@
         +     '<span class="shop-price-tag">🪙 ' + item.credit + '</span>'
         +     '<span class="shop-stock-tag">' + stockText + '</span>'
         +   '</div>'
-        +   '<button class="mini" style="background:#fee2e2;color:#e5484d;padding:7px 12px;border-radius:10px;cursor:pointer">🗑️ ลบ</button>'
+        +   '<div style="display:flex;gap:6px">'
+        +     '<button class="mini edit-btn" style="background:#efeaff;color:#6a4cff;padding:7px 12px;border-radius:10px;cursor:pointer">✏️ แก้ไข</button>'
+        +     '<button class="mini del-btn" style="background:#fee2e2;color:#e5484d;padding:7px 12px;border-radius:10px;cursor:pointer">🗑️ ลบ</button>'
+        +   '</div>'
         + '</div>';
 
-      d.querySelector('button.mini').onclick = () => deleteAdminShopItem(item.id, item.title);
+      d.querySelector('button.edit-btn').onclick = () => editAdminShopItem(item);
+      d.querySelector('button.del-btn').onclick = () => deleteAdminShopItem(item.id, item.title);
       box.appendChild(d);
     });
+  }
+
+  async function loadAdminShopWishes(){
+    const box = document.getElementById('adminShopWishesList');
+    if(!box) return;
+    let list = [];
+    try{
+      list = (await (await fetch('/api/wishes', {cache: 'no-store'})).json()).reverse();
+    }catch(e){ box.innerHTML = '<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
+
+    const countBadge = document.getElementById('adminShopWishesCount');
+    if(countBadge) countBadge.textContent = list.length ? '(' + list.length + ')' : '';
+
+    if(!list.length){
+      box.innerHTML = '<div class="empty">💡 ยังไม่มีคำขอรีเควสของรางวัลจากลูกค้า</div>';
+      return;
+    }
+    box.innerHTML = '';
+    list.forEach(w => {
+      const d = document.createElement('div');
+      d.className = 'shop-item-card';
+      const timeStr = new Date(w.time).toLocaleString('th-TH', {dateStyle:'short', timeStyle:'short'});
+      d.innerHTML =
+        '<div class="shop-item-head">'
+        +   '<div class="shop-item-icon" style="background:linear-gradient(135deg,#ffe8ec,#ffd6e0)">💡</div>'
+        +   '<div class="shop-item-main">'
+        +     '<b class="shop-item-title" style="font-size:16px">' + esc(w.title) + '</b>'
+        +     (w.desc ? '<div class="shop-item-desc" style="margin-top:4px">' + esc(w.desc) + '</div>' : '')
+        +     '<div class="who" style="margin-top:6px">รีเควสโดย: <b style="color:#2b2a3d">' + esc(w.user) + '</b> • ' + timeStr + '</div>'
+        +   '</div>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px;margin-top:10px">'
+        +   '<button class="mini add-btn" style="background:#efeaff;color:#6a4cff;padding:8px 14px;border-radius:12px;font-size:12px;cursor:pointer;flex:1">＋ นำไปเพิ่มในร้านทันที</button>'
+        +   '<button class="mini del-btn" style="background:#fee2e2;color:#e5484d;padding:8px 14px;border-radius:12px;font-size:12px;cursor:pointer">🗑️ ลบ</button>'
+        + '</div>';
+
+      d.querySelector('button.add-btn').onclick = () => addShopItemFromWish(w);
+      d.querySelector('button.del-btn').onclick = () => deleteAdminWish(w.id);
+      box.appendChild(d);
+    });
+  }
+
+  function addShopItemFromWish(w){
+    openAdminShopForm();
+    document.getElementById('shopNewTitle').value = w.title || '';
+    document.getElementById('shopNewDesc').value = w.desc || '';
+    document.getElementById('shopNewCredit').focus();
+    showToast('นำข้อมูลรีเควสมาใส่ในฟอร์มแล้ว กรุณาใส่เครดิตที่ต้องการ');
+  }
+
+  async function deleteAdminWish(id){
+    if(!confirm('ยืนยันลบคำขอรีเควสนี้หรือไม่?')) return;
+    try{
+      const res = await fetch('/api/wishes/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id })
+      });
+      if(res.ok){
+        showToast('ลบคำขอเรียบร้อย');
+        loadAdminShopWishes();
+      }
+    }catch(e){}
   }
 
   async function loadAdminShopOrders(){
@@ -1740,6 +1915,51 @@
       submittingRedeem = false;
       btn.disabled = false;
       btn.textContent = 'ยืนยันแลก';
+    }
+  }
+
+  // --- Customer Wish / Request Logic ---
+  function openWishModal(){
+    document.getElementById('wishTitle').value = '';
+    document.getElementById('wishDesc').value = '';
+    document.getElementById('wishErr').textContent = '';
+    document.getElementById('shopWishModal').style.display = 'flex';
+  }
+
+  function closeWishModal(){
+    document.getElementById('shopWishModal').style.display = 'none';
+  }
+
+  let submittingWish = false;
+  async function submitWish(){
+    if(submittingWish) return;
+    const me = document.getElementById('custName').textContent || localStorage.getItem('mk_cust_name') || '';
+    const title = document.getElementById('wishTitle').value.trim();
+    const desc = document.getElementById('wishDesc').value.trim();
+    const err = document.getElementById('wishErr');
+
+    if(!me){ err.textContent = 'ไม่พบชื่อผู้ใช้งาน'; return; }
+    if(!title){ err.textContent = 'กรุณาใส่ชื่อของรางวัลที่อยากให้เพิ่ม'; return; }
+
+    submittingWish = true;
+    const btn = document.getElementById('submitWishBtn');
+    btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+    err.textContent = '';
+    try{
+      const res = await fetch('/api/wishes', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ user: me, title, desc })
+      });
+      if(!res.ok) throw 0;
+      closeWishModal();
+      showToast('💡 ส่งคำขอรีเควสเรียบร้อย! ขอบคุณสำหรับข้อเสนอแนะ');
+    }catch(e){
+      err.textContent = 'ส่งไม่สำเร็จ ลองใหม่อีกครั้ง';
+    }finally{
+      submittingWish = false;
+      btn.disabled = false;
+      btn.textContent = 'ส่งคำขอ';
     }
   }
 

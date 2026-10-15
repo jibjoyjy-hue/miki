@@ -111,6 +111,39 @@ http.createServer((req, res) => {
     });
   }
 
+  if (url === '/api/quests/update' && req.method === 'POST') {
+    return body(req, (j) => {
+      const id = Number(j && j.id);
+      const title = String((j && j.title) || '').trim().slice(0, 100);
+      const desc = String((j && j.desc) || '').trim().slice(0, 500);
+      const credit = Math.max(0, Math.floor(Number(j && j.credit) || 0));
+      const assignees = Array.isArray(j && j.assignees)
+        ? j.assignees.map(a => String(a).slice(0, 60)).slice(0, 200) : [];
+      if (!id || !title) return send(res, 400, { error: 'id and title required' });
+      const list = read('quests');
+      const q = list.find(x => x.id === id);
+      if (!q) return send(res, 404, { error: 'quest not found' });
+      q.title = title;
+      q.desc = desc;
+      q.credit = credit;
+      q.assignees = assignees;
+      q.updatedAt = new Date().toISOString();
+      write('quests', list);
+      send(res, 200, { ok: true, quest: q });
+    });
+  }
+
+  if (url === '/api/quests/delete' && req.method === 'POST') {
+    return body(req, (j) => {
+      const id = Number(j && j.id);
+      if (!id) return send(res, 400, { error: 'id required' });
+      let list = read('quests');
+      list = list.filter(x => x.id !== id);
+      write('quests', list);
+      send(res, 200, { ok: true });
+    });
+  }
+
   if (url === '/api/claims' && req.method === 'GET') return send(res, 200, read('claims'));
 
   if (url === '/api/claims' && req.method === 'POST') {
@@ -237,6 +270,29 @@ http.createServer((req, res) => {
     });
   }
 
+  if (url === '/api/shop/items/update' && req.method === 'POST') {
+    return body(req, (j) => {
+      const id = Number(j && j.id);
+      const title = String((j && j.title) || '').trim().slice(0, 100);
+      const desc = String((j && j.desc) || '').trim().slice(0, 500);
+      const credit = Math.max(1, Math.floor(Number(j && j.credit) || 0));
+      const stock = Math.max(0, Math.floor(Number(j && j.stock) || 0));
+      const icon = String((j && j.icon) || '🎁').trim().slice(0, 10);
+      if (!id || !title || !credit) return send(res, 400, { error: 'id, title, and credit required' });
+      const list = readShop();
+      const item = list.find(x => x.id === id);
+      if (!item) return send(res, 404, { error: 'item not found' });
+      item.title = title;
+      item.desc = desc;
+      item.credit = credit;
+      item.stock = stock;
+      item.icon = icon || '🎁';
+      item.updatedAt = new Date().toISOString();
+      write('shop', list);
+      send(res, 200, { ok: true, item });
+    });
+  }
+
   if (url === '/api/shop/redeem' && req.method === 'POST') {
     return body(req, (j) => {
       const itemId = Number(j && j.itemId);
@@ -322,6 +378,48 @@ http.createServer((req, res) => {
       }
       write('redemptions', redemptions);
       send(res, 200, { ok: true, redemption: r });
+    });
+  }
+
+  if (url === '/api/wishes' && req.method === 'GET') {
+    return send(res, 200, read('wishes'));
+  }
+
+  if (url === '/api/wishes' && req.method === 'POST') {
+    return body(req, (j) => {
+      const title = String((j && j.title) || '').trim().slice(0, 100);
+      const desc = String((j && j.desc) || '').trim().slice(0, 500);
+      const user = String((j && j.user) || '').trim().slice(0, 60);
+      if (!title || !user) return send(res, 400, { error: 'title and user required' });
+      const list = read('wishes');
+      const item = { id: Date.now(), title, desc, user, status: 'pending', time: new Date().toISOString() };
+      list.push(item);
+      write('wishes', list);
+
+      // Notify in chat for admin
+      const msgs = read('messages');
+      msgs.push({
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        user,
+        sender: 'user',
+        text: '💡 รีเควสของรางวัลใหม่: "' + title + '" ' + (desc ? '(' + desc + ')' : ''),
+        time: new Date().toISOString(),
+        read: false
+      });
+      write('messages', msgs);
+
+      send(res, 201, { ok: true, wish: item });
+    });
+  }
+
+  if (url === '/api/wishes/delete' && req.method === 'POST') {
+    return body(req, (j) => {
+      const id = Number(j && j.id);
+      if (!id) return send(res, 400, { error: 'id required' });
+      let list = read('wishes');
+      list = list.filter(x => x.id !== id);
+      write('wishes', list);
+      send(res, 200, { ok: true });
     });
   }
 
@@ -491,6 +589,19 @@ http.createServer((req, res) => {
         });
         if (added > 0 || !current.length) write('gifts', current);
       }
+      if (Array.isArray(j.wishes) && j.wishes.length) {
+        const current = read('wishes');
+        const currentIds = new Set(current.map(x => String(x.id)));
+        let added = 0;
+        j.wishes.forEach(w => {
+          if (w && w.title && !currentIds.has(String(w.id))) {
+            current.push(w);
+            currentIds.add(String(w.id));
+            added++;
+          }
+        });
+        if (added > 0 || !current.length) write('wishes', current);
+      }
       send(res, 200, { ok: true, requestsCount: read('requests').length });
     });
   }
@@ -504,6 +615,7 @@ http.createServer((req, res) => {
       shop: readShop(),
       redemptions: read('redemptions'),
       gifts: read('gifts'),
+      wishes: read('wishes'),
       exportedAt: new Date().toISOString()
     });
   }
