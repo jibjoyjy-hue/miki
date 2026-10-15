@@ -8,6 +8,22 @@ const file = (n) => path.join(__dirname, n + '.json');
 const read = (n) => { try { return JSON.parse(fs.readFileSync(file(n), 'utf8')); } catch { return []; } };
 const write = (n, d) => fs.writeFileSync(file(n), JSON.stringify(d, null, 2));
 
+const defaultShopItems = [
+  { id: 1, title: 'คูปองส่วนลด 20 บาท', desc: 'ใช้เป็นส่วนลดเงินสดเมื่อทานอาหารที่ร้าน', credit: 50, icon: '🎟️', stock: 50 },
+  { id: 2, title: 'เครื่องดื่ม / ขนมฟรี 1 แก้ว', desc: 'เลือกรับเครื่องดื่มหรือของหวานเมนูใดก็ได้ 1 รายการ', credit: 100, icon: '🥤', stock: 30 },
+  { id: 3, title: 'คูปองส่วนลด 50 บาท', desc: 'ใช้เป็นส่วนลดเมื่อมียอดทานครบ 200 บาทขึ้นไป', credit: 200, icon: '🏷️', stock: 20 },
+  { id: 4, title: 'พวงกุญแจ Limited MK', desc: 'พวงกุญแจอะคริลิกลายพิเศษเฉพาะสมาชิกร้าน MK', credit: 350, icon: '🔑', stock: 15 },
+  { id: 5, title: 'เสื้อยืดสกรีนลาย MK', desc: 'เสื้อยืดพรีเมียมลิขสิทธิ์แท้ เนื้อผ้านุ่มใส่สบาย (ระบุไซส์ได้)', credit: 500, icon: '👕', stock: 10 }
+];
+const readShop = () => {
+  const list = read('shop');
+  if (!list || !list.length) {
+    write('shop', defaultShopItems);
+    return defaultShopItems;
+  }
+  return list;
+};
+
 const send = (res, code, obj) => {
   res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(obj));
@@ -143,9 +159,131 @@ http.createServer((req, res) => {
 
   if (url === '/api/balance' && req.method === 'GET') {
     const name = new URL(req.url, 'http://x').searchParams.get('name') || '';
-    const credit = read('claims').filter(c => c.name === name && c.status === 'approved')
+    const earned = read('claims').filter(c => c.name === name && c.status === 'approved')
       .reduce((s, c) => s + c.credit, 0);
-    return send(res, 200, { credit });
+    const spent = read('redemptions').filter(r => r.user === name && r.status !== 'cancelled')
+      .reduce((s, r) => s + r.credit, 0);
+    const credit = Math.max(0, earned - spent);
+    return send(res, 200, { credit, earned, spent });
+  }
+
+  if (url === '/api/shop/items' && req.method === 'GET') {
+    return send(res, 200, readShop());
+  }
+
+  if (url === '/api/shop/items' && req.method === 'POST') {
+    return body(req, (j) => {
+      const title = String((j && j.title) || '').trim().slice(0, 100);
+      const desc = String((j && j.desc) || '').trim().slice(0, 500);
+      const credit = Math.max(1, Math.floor(Number(j && j.credit) || 0));
+      const stock = Math.max(0, Math.floor(Number(j && j.stock) || 0));
+      const icon = String((j && j.icon) || '🎁').trim().slice(0, 10);
+      if (!title || !credit) return send(res, 400, { error: 'title and credit required' });
+      const list = readShop();
+      const item = { id: Date.now(), title, desc, credit, icon: icon || '🎁', stock: stock || 10 };
+      list.push(item);
+      write('shop', list);
+      send(res, 201, { ok: true, item });
+    });
+  }
+
+  if (url === '/api/shop/items/delete' && req.method === 'POST') {
+    return body(req, (j) => {
+      const id = Number(j && j.id);
+      if (!id) return send(res, 400, { error: 'id required' });
+      let list = readShop();
+      list = list.filter(x => x.id !== id);
+      write('shop', list);
+      send(res, 200, { ok: true });
+    });
+  }
+
+  if (url === '/api/shop/redeem' && req.method === 'POST') {
+    return body(req, (j) => {
+      const itemId = Number(j && j.itemId);
+      const user = String((j && j.user) || '').trim();
+      if (!itemId || !user) return send(res, 400, { error: 'itemId and user required' });
+      const shopItems = readShop();
+      const item = shopItems.find(x => x.id === itemId);
+      if (!item) return send(res, 404, { error: 'item not found' });
+      if (typeof item.stock === 'number' && item.stock <= 0) {
+        return send(res, 400, { error: 'out_of_stock', message: 'ของรางวัลนี้หมดแล้ว' });
+      }
+
+      const earned = read('claims').filter(c => c.name === user && c.status === 'approved')
+        .reduce((s, c) => s + c.credit, 0);
+      const spent = read('redemptions').filter(r => r.user === user && r.status !== 'cancelled')
+        .reduce((s, r) => s + r.credit, 0);
+      const balance = Math.max(0, earned - spent);
+
+      if (balance < item.credit) {
+        return send(res, 400, {
+          error: 'insufficient_credit',
+          message: 'เครดิตไม่เพียงพอ (ต้องการ 🪙 ' + item.credit + ' แต่คุณมี 🪙 ' + balance + ')'
+        });
+      }
+
+      if (typeof item.stock === 'number') {
+        item.stock = Math.max(0, item.stock - 1);
+        write('shop', shopItems);
+      }
+
+      const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
+      const code = 'MK-' + rand;
+      const redemptions = read('redemptions');
+      const redemption = {
+        id: Date.now(),
+        code,
+        itemId: item.id,
+        itemTitle: item.title,
+        itemIcon: item.icon || '🎁',
+        credit: item.credit,
+        user,
+        status: 'pending',
+        time: new Date().toISOString()
+      };
+      redemptions.push(redemption);
+      write('redemptions', redemptions);
+
+      send(res, 201, {
+        ok: true,
+        redemption,
+        newBalance: balance - item.credit
+      });
+    });
+  }
+
+  if (url === '/api/shop/redemptions' && req.method === 'GET') {
+    const user = new URL(req.url, 'http://x').searchParams.get('user') || '';
+    const all = read('redemptions');
+    if (!user) return send(res, 200, all);
+    return send(res, 200, all.filter(r => r.user === user));
+  }
+
+  if (url === '/api/shop/redemptions/decide' && req.method === 'POST') {
+    return body(req, (j) => {
+      const id = Number(j && j.id);
+      const status = j && j.status;
+      if (!id || (status !== 'fulfilled' && status !== 'cancelled')) {
+        return send(res, 400, { error: 'invalid request' });
+      }
+      const redemptions = read('redemptions');
+      const r = redemptions.find(x => x.id === id);
+      if (!r) return send(res, 404, { error: 'redemption not found' });
+      r.status = status;
+      r.decidedAt = new Date().toISOString();
+
+      if (status === 'cancelled') {
+        const shop = readShop();
+        const item = shop.find(x => x.id === r.itemId);
+        if (item && typeof item.stock === 'number') {
+          item.stock++;
+          write('shop', shop);
+        }
+      }
+      write('redemptions', redemptions);
+      send(res, 200, { ok: true, redemption: r });
+    });
   }
 
   if (url === '/api/messages' && req.method === 'GET') {
@@ -275,6 +413,32 @@ http.createServer((req, res) => {
         });
         if (added > 0 || !current.length) write('messages', current);
       }
+      if (Array.isArray(j.shop) && j.shop.length) {
+        const current = readShop();
+        const currentIds = new Set(current.map(x => String(x.id)));
+        let added = 0;
+        j.shop.forEach(s => {
+          if (s && s.title && !currentIds.has(String(s.id))) {
+            current.push(s);
+            currentIds.add(String(s.id));
+            added++;
+          }
+        });
+        if (added > 0) write('shop', current);
+      }
+      if (Array.isArray(j.redemptions) && j.redemptions.length) {
+        const current = read('redemptions');
+        const currentIds = new Set(current.map(x => String(x.id)));
+        let added = 0;
+        j.redemptions.forEach(r => {
+          if (r && !currentIds.has(String(r.id))) {
+            current.push(r);
+            currentIds.add(String(r.id));
+            added++;
+          }
+        });
+        if (added > 0 || !current.length) write('redemptions', current);
+      }
       send(res, 200, { ok: true, requestsCount: read('requests').length });
     });
   }
@@ -285,6 +449,8 @@ http.createServer((req, res) => {
       quests: read('quests'),
       claims: read('claims'),
       messages: read('messages'),
+      shop: readShop(),
+      redemptions: read('redemptions'),
       exportedAt: new Date().toISOString()
     });
   }
