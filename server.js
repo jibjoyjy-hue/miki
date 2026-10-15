@@ -148,6 +148,61 @@ http.createServer((req, res) => {
     return send(res, 200, { credit });
   }
 
+  if (url === '/api/messages' && req.method === 'GET') {
+    const user = new URL(req.url, 'http://x').searchParams.get('user') || '';
+    const all = read('messages');
+    if (!user) return send(res, 200, all);
+    const filtered = all.filter(m => m.user === user || m.from === user || m.to === user);
+    return send(res, 200, filtered);
+  }
+
+  if (url === '/api/messages' && req.method === 'POST') {
+    return body(req, (j) => {
+      const user = String((j && j.user) || '').trim().slice(0, 60);
+      const text = String((j && j.text) || '').trim().slice(0, 1000);
+      const sender = (j && j.sender) === 'admin' ? 'admin' : 'user';
+      if (!user || !text) return send(res, 400, { error: 'user and text required' });
+      const list = read('messages');
+      const item = {
+        id: Date.now(),
+        user,
+        sender,
+        text,
+        time: new Date().toISOString(),
+        read: sender === 'admin'
+      };
+      list.push(item);
+      write('messages', list);
+      send(res, 201, { ok: true, message: item });
+    });
+  }
+
+  if (url === '/api/messages/requests' && req.method === 'GET') {
+    const all = read('messages');
+    const userMap = {};
+    all.forEach(m => {
+      if (!userMap[m.user]) userMap[m.user] = { user: m.user, lastMsg: m.text, lastTime: m.time, unread: 0 };
+      userMap[m.user].lastMsg = m.text;
+      userMap[m.user].lastTime = m.time;
+      if (m.sender === 'user' && !m.read) userMap[m.user].unread++;
+    });
+    const list = Object.values(userMap).sort((a, b) => new Date(b.lastTime) - new Date(a.lastTime));
+    return send(res, 200, list);
+  }
+
+  if (url === '/api/messages/read' && req.method === 'POST') {
+    return body(req, (j) => {
+      const user = String((j && j.user) || '').trim();
+      if (!user) return send(res, 400, { error: 'user required' });
+      const list = read('messages');
+      list.forEach(m => {
+        if (m.user === user && m.sender === 'user') m.read = true;
+      });
+      write('messages', list);
+      send(res, 200, { ok: true });
+    });
+  }
+
   if (url === '/' || url === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return res.end(fs.readFileSync(path.join(__dirname, 'index.html')));
