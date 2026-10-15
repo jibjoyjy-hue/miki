@@ -95,6 +95,8 @@
   .tabbar button i{font-style:normal;font-size:22px;filter:grayscale(1);opacity:.6;transition:.2s}
   .tabbar button.on{color:#6a4cff}
   .tabbar button.on i{filter:none;opacity:1;transform:translateY(-2px)}
+  .toast{position:absolute;top:28px;left:50%;transform:translateX(-50%) translateY(-20px);background:rgba(34,197,139,.95);color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.15);opacity:0;transition:.3s;pointer-events:none;z-index:99}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
@@ -138,6 +140,7 @@
           <button class="btn" onclick="openQuestForm()">＋ เพิ่มภารกิจ</button>
           <div id="claimList"></div>
           <div id="questList"></div>
+          <div id="approvedClaimList" style="display:flex;flex-direction:column;gap:10px"></div>
         </div>
         <div id="questForm" class="hbox" style="display:none">
           <div class="svhead"><button class="back" onclick="closeQuestForm()">← กลับ</button><h2>เพิ่มภารกิจ</h2><span style="width:50px"></span></div>
@@ -205,6 +208,18 @@
     document.getElementById('pw').value='';
     document.getElementById('uerr').textContent='';
     if(id==='userPage') document.getElementById('uname').value='';
+  }
+  function showToast(msg){
+    let t=document.getElementById('appToast');
+    if(!t){
+      t=document.createElement('div');
+      t.id='appToast';
+      t.className='toast';
+      document.querySelector('.phone').appendChild(t);
+    }
+    t.textContent=msg;
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'),2200);
   }
   let sending=false;
   let checkPollTimer=null;
@@ -302,11 +317,13 @@
   }
   async function decideRequest(id, name, status){
     try{
-      await fetch('/api/requests/decide',{
+      const res = await fetch('/api/requests/decide',{
         method:'POST',
-        headers:'application/json' ? {'Content-Type':'application/json'} : {},
+        headers:{'Content-Type':'application/json'},
         body:JSON.stringify({id, name, status})
       });
+      if(res.ok && status==='approved') showToast('✓ อนุมัติลูกค้าสำเร็จ!');
+      else if(res.ok && status==='rejected') showToast('ปฏิเสธคำขอเรียบร้อย');
     }catch(e){}
     loadStatus();
   }
@@ -371,7 +388,7 @@
         +(q.desc?'<p>'+esc(q.desc)+'</p>':'')+'<div class="qact"></div>';
       const act=d.querySelector('.qact');
       if(st==='pending') act.innerHTML='<span class="badge">รอแอดมินอนุมัติ</span>';
-      else if(st==='approved') act.innerHTML='<span class="badge got">✓ ได้รับเครดิตแล้ว</span>';
+      else if(st==='approved') act.innerHTML='<span class="badge got">✓ อนุมัติเควสสำเร็จ (+🪙 '+q.credit+')</span>';
       else{
         if(st==='rejected') act.innerHTML='<span class="badge rej">ถูกปฏิเสธ</span> ';
         const b=document.createElement('button');
@@ -399,16 +416,19 @@
   async function loadQuests(){
     const box=document.getElementById('questList');
     const cbox=document.getElementById('claimList');
-    let list=[],claims=[];
+    const abox=document.getElementById('approvedClaimList');
+    let list=[],allClaims=[];
     try{
       list=(await (await fetch('/api/quests',{cache:'no-store'})).json()).reverse();
-      claims=(await (await fetch('/api/claims',{cache:'no-store'})).json()).filter(c=>c.status==='pending').reverse();
+      allClaims=await (await fetch('/api/claims',{cache:'no-store'})).json();
     }catch(e){ box.innerHTML='<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
+    const pendingClaims = allClaims.filter(c=>c.status==='pending').reverse();
+    const approvedClaims = allClaims.filter(c=>c.status==='approved').slice(-5).reverse();
     cbox.innerHTML='';
-    if(claims.length){
-      const h=document.createElement('b'); h.className='lbl'; h.textContent='คำขอรับเครดิต ('+claims.length+')'; cbox.appendChild(h);
+    if(pendingClaims.length){
+      const h=document.createElement('b'); h.className='lbl'; h.textContent='คำขอรับเครดิต ('+pendingClaims.length+')'; cbox.appendChild(h);
     }
-    claims.forEach(c=>{
+    pendingClaims.forEach(c=>{
       const d=document.createElement('div');
       d.className='qcard claim';
       d.innerHTML='<div class="qtop"><b></b><span class="credit"></span></div><div class="who"></div>'
@@ -416,8 +436,8 @@
       d.querySelector('b').textContent=c.title;
       d.querySelector('.credit').textContent='🪙 '+c.credit;
       d.querySelector('.who').textContent='ขอโดย: '+c.name;
-      d.querySelector('.ok-btn').onclick=()=>decideClaim(c.id,'approved');
-      d.querySelector('.no-btn').onclick=()=>decideClaim(c.id,'rejected');
+      d.querySelector('.ok-btn').onclick=()=>decideClaim(c.id,'approved',c.name);
+      d.querySelector('.no-btn').onclick=()=>decideClaim(c.id,'rejected',c.name);
       cbox.appendChild(d);
     });
     box.innerHTML=list.length?'':'<div class="empty">ยังไม่มีภารกิจ</div>';
@@ -429,10 +449,28 @@
         +'<div class="who">ส่งให้: '+(q.assignees.length?q.assignees.map(a=>'<span class="chip">'+esc(a)+'</span>').join(''):'<i>ยังไม่เลือก</i>')+'</div>';
       box.appendChild(d);
     });
+    if(abox){
+      abox.innerHTML='';
+      if(approvedClaims.length){
+        const ah=document.createElement('b'); ah.className='lbl'; ah.textContent='อนุมัติเควสสำเร็จล่าสุด ('+approvedClaims.length+')'; abox.appendChild(ah);
+        approvedClaims.forEach(c=>{
+          const ad=document.createElement('div');
+          ad.className='qcard';
+          ad.style.borderLeft='4px solid #22c58b';
+          ad.innerHTML='<div class="qtop"><b>'+esc(c.title)+'</b><span class="badge got">✓ อนุมัติเควสสำเร็จ</span></div><div class="who">'+esc(c.name)+' ได้รับ 🪙 '+c.credit+' เครดิต</div>';
+          abox.appendChild(ad);
+        });
+      }
+    }
   }
-  async function decideClaim(id,status){
+  async function decideClaim(id,status,who){
     try{
-      await fetch('/api/claims/decide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status})});
+      const res=await fetch('/api/claims/decide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status})});
+      if(res.ok && status==='approved'){
+        showToast('✓ อนุมัติเควสสำเร็จ!'+(who?' ('+who+')':''));
+      } else if(res.ok && status==='rejected'){
+        showToast('ปฏิเสธคำขอเรียบร้อย');
+      }
     }catch(e){}
     loadQuests();
   }
