@@ -8,21 +8,7 @@ const file = (n) => path.join(__dirname, n + '.json');
 const read = (n) => { try { return JSON.parse(fs.readFileSync(file(n), 'utf8')); } catch { return []; } };
 const write = (n, d) => fs.writeFileSync(file(n), JSON.stringify(d, null, 2));
 
-const defaultShopItems = [
-  { id: 1, title: 'คูปองส่วนลด 20 บาท', desc: 'ใช้เป็นส่วนลดเงินสดเมื่อทานอาหารที่ร้าน', credit: 50, icon: '🎟️', stock: 50 },
-  { id: 2, title: 'เครื่องดื่ม / ขนมฟรี 1 แก้ว', desc: 'เลือกรับเครื่องดื่มหรือของหวานเมนูใดก็ได้ 1 รายการ', credit: 100, icon: '🥤', stock: 30 },
-  { id: 3, title: 'คูปองส่วนลด 50 บาท', desc: 'ใช้เป็นส่วนลดเมื่อมียอดทานครบ 200 บาทขึ้นไป', credit: 200, icon: '🏷️', stock: 20 },
-  { id: 4, title: 'พวงกุญแจ Limited MK', desc: 'พวงกุญแจอะคริลิกลายพิเศษเฉพาะสมาชิกร้าน MK', credit: 350, icon: '🔑', stock: 15 },
-  { id: 5, title: 'เสื้อยืดสกรีนลาย MK', desc: 'เสื้อยืดพรีเมียมลิขสิทธิ์แท้ เนื้อผ้านุ่มใส่สบาย (ระบุไซส์ได้)', credit: 500, icon: '👕', stock: 10 }
-];
-const readShop = () => {
-  const list = read('shop');
-  if (!list || !list.length) {
-    write('shop', defaultShopItems);
-    return defaultShopItems;
-  }
-  return list;
-};
+const readShop = () => read('shop');
 
 const send = (res, code, obj) => {
   res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });

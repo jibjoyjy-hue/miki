@@ -1276,6 +1276,7 @@
     }catch(e){ box.innerHTML = '<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
     
     if(list.length) saveLocalBackup('shop', list);
+    else localStorage.removeItem('mk_db_shop');
     const countBadge = document.getElementById('adminShopItemsCount');
     if(countBadge) countBadge.textContent = list.length ? '(' + list.length + ')' : '';
 
