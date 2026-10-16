@@ -40,7 +40,7 @@
   .pages{flex:1;position:relative}
   .page{display:none;height:100%;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding-top:30px}
   .page.on{display:flex;animation:in .35s ease}
-  #p-home{justify-content:flex-start;align-items:stretch;padding:56px 20px 0;gap:16px}
+  #p-home{justify-content:flex-start;align-items:stretch;padding:56px 20px 14px;gap:16px;overflow-y:auto}
   .menu{display:flex;align-items:center;gap:16px;text-align:left;border:none;border-radius:24px;padding:22px 20px;color:#fff;cursor:pointer;transition:.25s}
   .menu b{display:block;font-size:20px}.menu small{opacity:.85;font-size:13px}
   .menu .mic{width:60px;height:60px;border-radius:20px;background:rgba(255,255,255,.22);display:grid;place-items:center;font-size:28px;flex:none}
@@ -177,9 +177,19 @@
     <div class="pages">
       <div class="page on" id="p-home">
         <div id="homeMenu" class="hbox">
+          <div class="greet" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div>
+              <small style="color:#8a88a0;font-size:12px">ระบบผู้ดูแลร้าน 🛠️</small>
+              <h2 style="font-size:24px;text-align:left;color:#2b2a3d">แอดมิน</h2>
+            </div>
+            <button class="mini" style="background:#fff;border:1px solid #ffd5d5;padding:7px 14px;border-radius:12px;cursor:pointer;color:#e5484d;font-weight:700;display:flex;align-items:center;gap:4px" onclick="adminLogout()">
+              <span>🚪</span> ออกจากระบบ
+            </button>
+          </div>
           <button class="menu add" onclick="addCustomer()"><div class="mic">➕</div><div><b>เพิ่มลูกค้า</b><small>บันทึกลูกค้าใหม่</small></div></button>
           <button class="menu status" onclick="openStatus()"><div class="mic">📊</div><div style="flex:1"><b>ดูสถานะ / คำขอ</b><small>ตรวจสอบลูกค้า & แชทคำขอ</small></div><span id="adminChatBadge" class="unread-pill" style="display:none">0</span></button>
           <button class="menu" style="background:linear-gradient(135deg,#4a90e2,#63b3ed);box-shadow:0 12px 24px rgba(74,144,226,.35)" onclick="openBackup()"><div class="mic">💾</div><div><b>สำรอง & กู้คืนข้อมูล</b><small>ป้องกันข้อมูลหายหลังอัปเดตแอป</small></div></button>
+          <button class="menu" style="background:linear-gradient(135deg,#f43f5e,#fb7185);box-shadow:0 12px 24px rgba(244,63,94,.3)" onclick="adminLogout()"><div class="mic">🚪</div><div><b>ออกจากระบบแอดมิน</b><small>กลับไปหน้าเลือกลูกค้าหรือแอดมิน</small></div></button>
         </div>
         <div id="backupView" class="hbox" style="display:none">
           <div class="svhead"><button class="back" onclick="closeBackup()">← กลับ</button><h2>สำรอง & กู้คืน</h2><span style="width:50px"></span></div>
@@ -829,6 +839,15 @@
     localStorage.removeItem('mk_cust_name');
     localStorage.removeItem('mk_cust_status');
     show('select');
+  }
+  function adminLogout(){
+    localStorage.removeItem('mk_admin_logged');
+    clearInterval(adminTabChatInterval);
+    const pw = document.getElementById('pw');
+    if(pw) pw.value = '';
+    tab('home');
+    show('select');
+    showToast('ออกจากระบบแอดมินเรียบร้อย');
   }
   function saveLocalBackup(type, items){
     if(!Array.isArray(items) || !items.length) return;
