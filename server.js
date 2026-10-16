@@ -10,6 +10,23 @@ const write = (n, d) => fs.writeFileSync(file(n), JSON.stringify(d, null, 2));
 
 const readShop = () => read('shop');
 
+const getUserBalance = (name) => {
+  const earned = read('claims').filter(c => c.name === name && c.status === 'approved')
+    .reduce((s, c) => s + (Number(c.credit) || 0), 0);
+  const giftCredits = read('gifts')
+    .filter(g => Array.isArray(g.recipients) && g.recipients.includes(name))
+    .reduce((s, g) => s + (Number(g.credit) || 0), 0);
+  const spent = read('redemptions').filter(r => r.user === name && r.status !== 'cancelled')
+    .reduce((s, r) => s + (Number(r.credit) || 0), 0);
+  const trades = read('trades');
+  const tradeIn = trades.filter(t => t.toUser === name && !t.cancelled)
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const tradeOut = trades.filter(t => t.fromUser === name && !t.cancelled)
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const credit = Math.max(0, earned + giftCredits + tradeIn - spent - tradeOut);
+  return { credit, earned, giftCredits, spent, tradeIn, tradeOut };
+};
+
 const send = (res, code, obj) => {
   res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(obj));
@@ -178,15 +195,137 @@ http.createServer((req, res) => {
 
   if (url === '/api/balance' && req.method === 'GET') {
     const name = new URL(req.url, 'http://x').searchParams.get('name') || '';
-    const earned = read('claims').filter(c => c.name === name && c.status === 'approved')
-      .reduce((s, c) => s + c.credit, 0);
-    const giftCredits = read('gifts')
-      .filter(g => Array.isArray(g.recipients) && g.recipients.includes(name))
-      .reduce((s, g) => s + (Number(g.credit) || 0), 0);
-    const spent = read('redemptions').filter(r => r.user === name && r.status !== 'cancelled')
-      .reduce((s, r) => s + r.credit, 0);
-    const credit = Math.max(0, earned + giftCredits - spent);
-    return send(res, 200, { credit, earned, giftCredits, spent });
+    return send(res, 200, getUserBalance(name));
+  }
+
+  if (url === '/api/customers/balances' && req.method === 'GET') {
+    const reqs = read('requests').filter(r => r.status === 'approved' || !r.status);
+    const names = [...new Set(reqs.map(r => r.name))];
+    const list = names.map(name => ({
+      name,
+      credit: getUserBalance(name).credit
+    }));
+    return send(res, 200, list);
+  }
+
+  if (url === '/api/trades' && req.method === 'GET') {
+    const user = new URL(req.url, 'http://x').searchParams.get('user') || '';
+    let list = read('trades');
+    if (user) {
+      list = list.filter(t => t.fromUser === user || t.toUser === user);
+    }
+    list.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+    return send(res, 200, list);
+  }
+
+  if (url === '/api/trades' && req.method === 'POST') {
+    return body(req, (j) => {
+      const fromUser = String((j && j.fromUser) || '').trim();
+      const toUser = String((j && j.toUser) || '').trim();
+      const amount = Math.max(1, Math.floor(Number(j && j.amount) || 0));
+      const note = String((j && j.note) || '').trim().slice(0, 200);
+
+      if (!fromUser || !toUser) {
+        return send(res, 400, { error: 'กรุณาเลือกทั้งผู้โอนและผู้รับ' });
+      }
+      if (fromUser.toLowerCase() === toUser.toLowerCase()) {
+        return send(res, 400, { error: 'ผู้โอนและผู้รับต้องไม่ใช่คนเดียวกัน' });
+      }
+      if (!amount || amount <= 0) {
+        return send(res, 400, { error: 'จำนวนเครดิตต้องมากกว่า 0' });
+      }
+
+      const senderCredit = getUserBalance(fromUser).credit;
+      if (senderCredit < amount) {
+        return send(res, 400, {
+          error: 'เครดิตของผู้โอนไม่เพียงพอ (มี 🪙 ' + senderCredit + ' แต่ต้องการโอน 🪙 ' + amount + ')'
+        });
+      }
+
+      const trade = {
+        id: Date.now(),
+        fromUser,
+        toUser,
+        amount,
+        note,
+        cancelled: false,
+        time: new Date().toISOString()
+      };
+
+      const trades = read('trades');
+      trades.push(trade);
+      write('trades', trades);
+
+      const msgs = read('messages');
+      const nowIso = new Date().toISOString();
+      const noteTxt = note ? ' (หมายเหตุ: ' + note + ')' : '';
+      msgs.push({
+        id: Date.now() + 1,
+        user: fromUser,
+        fromAdmin: true,
+        text: '🔄 มีการโอนเครดิต 🪙 ' + amount + ' จากคุณไปยัง "' + toUser + '" เรียบร้อยแล้ว' + noteTxt,
+        readByAdmin: true,
+        readByUser: false,
+        time: nowIso
+      });
+      msgs.push({
+        id: Date.now() + 2,
+        user: toUser,
+        fromAdmin: true,
+        text: '🔄 คุณได้รับโอนเครดิต 🪙 ' + amount + ' จาก "' + fromUser + '" เรียบร้อยแล้ว!' + noteTxt,
+        readByAdmin: true,
+        readByUser: false,
+        time: nowIso
+      });
+      write('messages', msgs);
+
+      return send(res, 201, { ok: true, trade });
+    });
+  }
+
+  if (url === '/api/trades/rollback' && req.method === 'POST') {
+    return body(req, (j) => {
+      const tradeId = j && j.id;
+      const trades = read('trades');
+      const trade = trades.find(t => String(t.id) === String(tradeId));
+      if (!trade) return send(res, 404, { error: 'ไม่พบรายการเทรด' });
+      if (trade.cancelled) return send(res, 400, { error: 'รายการนี้ถูกยกเลิกไปแล้ว' });
+
+      const recBal = getUserBalance(trade.toUser).credit;
+      if (recBal < trade.amount) {
+        return send(res, 400, {
+          error: 'ผู้รับ (' + trade.toUser + ') มีเครดิตเหลือเพียง 🪙 ' + recBal + ' ไม่เพียงพอที่จะคืน 🪙 ' + trade.amount
+        });
+      }
+
+      trade.cancelled = true;
+      trade.cancelledAt = new Date().toISOString();
+      write('trades', trades);
+
+      const msgs = read('messages');
+      const nowIso = new Date().toISOString();
+      msgs.push({
+        id: Date.now() + 1,
+        user: trade.fromUser,
+        fromAdmin: true,
+        text: '↩️ แอดมินได้ยกเลิกการโอนเครดิต 🪙 ' + trade.amount + ' ให้ "' + trade.toUser + '" และคืนเครดิตเข้าบัญชีคุณเรียบร้อยแล้ว',
+        readByAdmin: true,
+        readByUser: false,
+        time: nowIso
+      });
+      msgs.push({
+        id: Date.now() + 2,
+        user: trade.toUser,
+        fromAdmin: true,
+        text: '↩️ การโอนเครดิต 🪙 ' + trade.amount + ' จาก "' + trade.fromUser + '" ถูกยกเลิกโดยแอดมิน',
+        readByAdmin: true,
+        readByUser: false,
+        time: nowIso
+      });
+      write('messages', msgs);
+
+      return send(res, 200, { ok: true, trade });
+    });
   }
 
   if (url === '/api/gifts' && req.method === 'GET') {
@@ -305,16 +444,12 @@ http.createServer((req, res) => {
         return send(res, 400, { error: 'out_of_stock', message: 'ของรางวัลนี้หมดแล้ว' });
       }
 
-      const earned = read('claims').filter(c => c.name === user && c.status === 'approved')
-        .reduce((s, c) => s + c.credit, 0);
-      const spent = read('redemptions').filter(r => r.user === user && r.status !== 'cancelled')
-        .reduce((s, r) => s + r.credit, 0);
-      const balance = Math.max(0, earned - spent);
+      const userBal = getUserBalance(user).credit;
 
-      if (balance < item.credit) {
+      if (userBal < item.credit) {
         return send(res, 400, {
           error: 'insufficient_credit',
-          message: 'เครดิตไม่เพียงพอ (ต้องการ 🪙 ' + item.credit + ' แต่คุณมี 🪙 ' + balance + ')'
+          message: 'เครดิตไม่เพียงพอ (ต้องการ 🪙 ' + item.credit + ' แต่คุณมี 🪙 ' + userBal + ')'
         });
       }
 
@@ -602,6 +737,19 @@ http.createServer((req, res) => {
         });
         if (added > 0 || !current.length) write('wishes', current);
       }
+      if (Array.isArray(j.trades) && j.trades.length) {
+        const current = read('trades');
+        const currentIds = new Set(current.map(x => String(x.id)));
+        let added = 0;
+        j.trades.forEach(t => {
+          if (t && !currentIds.has(String(t.id))) {
+            current.push(t);
+            currentIds.add(String(t.id));
+            added++;
+          }
+        });
+        if (added > 0 || !current.length) write('trades', current);
+      }
       send(res, 200, { ok: true, requestsCount: read('requests').length });
     });
   }
@@ -616,6 +764,7 @@ http.createServer((req, res) => {
       redemptions: read('redemptions'),
       gifts: read('gifts'),
       wishes: read('wishes'),
+      trades: read('trades'),
       exportedAt: new Date().toISOString()
     });
   }

@@ -91,8 +91,8 @@
   .ok .sub{font-size:15px;font-weight:400;color:#8a88a0;margin-top:8px}
   .page .pic{width:96px;height:96px;border-radius:30px;background:linear-gradient(135deg,#6a4cff,#a46bff);display:grid;place-items:center;font-size:48px;box-shadow:0 14px 28px rgba(106,76,255,.35)}
   .tabbar{margin:0 14px 14px;height:68px;background:#fff;border-radius:24px;box-shadow:0 8px 24px rgba(80,50,180,.18);display:flex;justify-content:space-around;align-items:center}
-  .tabbar button{flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:600;color:#9a98ad;transition:.2s;position:relative}
-  .tabbar button i{font-style:normal;font-size:22px;filter:grayscale(1);opacity:.6;transition:.2s}
+  .tabbar button{flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:600;color:#9a98ad;transition:.2s;position:relative;padding:0 1px;min-width:0}
+  .tabbar button i{font-style:normal;font-size:20px;filter:grayscale(1);opacity:.6;transition:.2s}
   .tabbar button.on{color:#6a4cff}
   .tabbar button.on i{filter:none;opacity:1;transform:translateY(-2px)}
   .tabbar-badge{position:absolute;top:4px;right:calc(50% - 18px);background:#e5484d;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;line-height:16px;border-radius:10px;text-align:center;padding:0 4px;box-shadow:0 2px 6px rgba(229,72,77,.4)}
@@ -253,6 +253,54 @@
           </div>
         </div>
       </div>
+      <div class="page" id="p-trade" style="padding:56px 16px 12px;justify-content:flex-start">
+        <div id="adminTradeMain" class="hbox" style="width:100%;max-height:620px;overflow-y:auto;padding-bottom:12px">
+          <div class="svhead"><span style="width:50px"></span><h2>🔄 Trade เครดิต</h2><span style="width:50px"></span></div>
+          
+          <div class="qcard" style="display:flex;flex-direction:column;gap:12px">
+            <b class="lbl" style="font-size:16px">จัดการโอน / แลกเปลี่ยนเครดิต</b>
+            
+            <div>
+              <small style="color:#6f6d85;display:block;margin-bottom:4px;font-weight:600">ผู้โอน (ลูกค้าต้นทาง)</small>
+              <select id="tradeFromUser" class="fl" onchange="updateTradeFromBalance()" style="text-align:left">
+                <option value="">-- เลือกลูกค้าต้นทาง --</option>
+              </select>
+              <div id="tradeFromBalInfo" style="font-size:12px;color:#8a88a0;margin-top:4px">ยอดเครดิตคงเหลือ: -</div>
+            </div>
+
+            <div style="display:flex;justify-content:center;margin:-2px 0">
+              <button type="button" class="mini" style="padding:6px 14px;border-radius:12px;font-size:13px" onclick="swapTradeUsers()">⇅ สลับผู้โอน - ผู้รับ</button>
+            </div>
+
+            <div>
+              <small style="color:#6f6d85;display:block;margin-bottom:4px;font-weight:600">ผู้รับ (ลูกค้าปลายทาง)</small>
+              <select id="tradeToUser" class="fl" onchange="updateTradeToBalance()" style="text-align:left">
+                <option value="">-- เลือกลูกค้าปลายทาง --</option>
+              </select>
+              <div id="tradeToBalInfo" style="font-size:12px;color:#8a88a0;margin-top:4px">ยอดเครดิตคงเหลือ: -</div>
+            </div>
+
+            <div>
+              <small style="color:#6f6d85;display:block;margin-bottom:4px;font-weight:600">จำนวนเครดิตที่จะโอน (🪙)</small>
+              <input id="tradeAmount" type="number" min="1" placeholder="ระบุจำนวนเครดิต เช่น 50" class="fl">
+            </div>
+
+            <div>
+              <small style="color:#6f6d85;display:block;margin-bottom:4px;font-weight:600">หมายเหตุ / เหตุผล (ไม่บังคับ)</small>
+              <input id="tradeNote" type="text" placeholder="เช่น แลกเปลี่ยนไอเทม, โอนให้เพื่อน, ชดเชย" class="fl">
+            </div>
+
+            <div class="err" id="tradeErr"></div>
+            <button class="btn" id="tradeSubmitBtn" onclick="submitAdminTrade()">🔄 ยืนยันการโอนเครดิต</button>
+          </div>
+
+          <div class="svhead" style="margin-top:10px">
+            <b class="lbl" style="font-size:15px">📜 ประวัติการเทรดล่าสุด</b>
+            <button class="mini" onclick="loadAdminTrades()">🔄 รีเฟรช</button>
+          </div>
+          <div id="adminTradeHistoryList" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+      </div>
       <div class="page" id="p-gift" style="padding:56px 16px 12px;justify-content:flex-start">
         <div id="adminGiftMain" class="hbox" style="width:100%;max-height:620px;overflow-y:auto;padding-bottom:12px">
           <div class="svhead"><span style="width:50px"></span><h2>🎁 ส่งของขวัญ</h2><span style="width:50px"></span></div>
@@ -321,6 +369,7 @@
       <button class="on" data-tab="home" onclick="tab('home')"><i>🏠</i>Home</button>
       <button data-tab="quest" onclick="tab('quest')"><i>📜</i>Quest</button>
       <button data-tab="chat" onclick="tab('chat')"><i>💬</i>Chat<span id="tabChatBadge" class="tabbar-badge" style="display:none">0</span></button>
+      <button data-tab="trade" onclick="tab('trade')"><i>🔄</i>Trade</button>
       <button data-tab="gift" onclick="tab('gift')"><i>🎁</i>Gift</button>
       <button data-tab="shop" onclick="tab('shop')"><i>🛍️</i>Shop</button>
     </div>
@@ -393,7 +442,6 @@
     <div class="tabbar">
       <button class="on" data-tab="home" onclick="ctab('home')"><i>🏠</i>Home</button>
       <button data-tab="chat" onclick="ctab('chat')"><i>💬</i>Chat</button>
-      <button data-tab="trade" onclick="ctab('trade')"><i>🔄</i>Trade</button>
       <button data-tab="shop" onclick="ctab('shop')"><i>🛍️</i>Shop</button>
     </div>
   </div>
@@ -771,6 +819,7 @@
     const localQuests = JSON.parse(localStorage.getItem('mk_db_quests') || '[]');
     const localClaims = JSON.parse(localStorage.getItem('mk_db_claims') || '[]');
     const localMsgs = JSON.parse(localStorage.getItem('mk_db_messages') || '[]');
+    const localTrades = JSON.parse(localStorage.getItem('mk_db_trades') || '[]');
     if(!localReqs.length && !localQuests.length){
       alert('ยังไม่มีข้อมูลสำรองในเบราว์เซอร์นี้');
       return;
@@ -783,7 +832,8 @@
           requests: localReqs,
           quests: localQuests,
           claims: localClaims,
-          messages: localMsgs
+          messages: localMsgs,
+          trades: localTrades
         })
       });
       if(r.ok){
@@ -836,6 +886,7 @@
     document.querySelectorAll('#main .page').forEach(p=>p.classList.toggle('on',p.id==='p-'+name));
     document.querySelectorAll('#main .tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
     if(name==='quest') loadQuests();
+    if(name==='trade') loadAdminTrades();
     if(name==='gift') loadAdminGifts();
     if(name==='shop') loadAdminShop();
     if(name==='chat'){
@@ -968,6 +1019,23 @@
           });
         }
       }catch(ge){}
+      try{
+        const myTrades = await (await fetch('/api/trades?user=' + encodeURIComponent(me), {cache:'no-store'})).json();
+        if(myTrades && myTrades.length){
+          myTrades.slice(0, 5).forEach(t => {
+            const td = document.createElement('div');
+            td.className = 'qcard';
+            const isRecv = t.toUser === me;
+            td.style.borderLeft = isRecv ? '4px solid #22c58b' : '4px solid #ffa36b';
+            td.style.background = isRecv ? 'linear-gradient(135deg,#f0fdf8,#e6fbf2)' : 'linear-gradient(135deg,#fffbf5,#fff4e8)';
+            const timeStr = new Date(t.time).toLocaleString('th-TH', {dateStyle:'short', timeStyle:'short'});
+            td.innerHTML = '<div class="qtop"><b style="color:' + (isRecv ? '#16915f' : '#c58a00') + '">' + (isRecv ? '🔄 ได้รับโอนเครดิต' : '🔄 โอนเครดิตออก') + '</b><span class="badge ' + (isRecv ? 'got' : '') + '" style="' + (isRecv ? '' : 'background:#ffe8d6;color:#c25e00') + '">' + (isRecv ? '+🪙 ' : '-🪙 ') + t.amount + '</span></div>'
+              + '<p style="color:#6f6d85;margin:4px 0">' + (isRecv ? 'จาก: <b>' + esc(t.fromUser) + '</b>' : 'ถึง: <b>' + esc(t.toUser) + '</b>') + (t.note ? ' (' + esc(t.note) + ')' : '') + (t.cancelled ? ' <span style="color:#e5484d;font-weight:700">[ยกเลิกแล้ว]</span>' : '') + '</p>'
+              + '<div class="who">เวลา: ' + timeStr + '</div>';
+            gBox.appendChild(td);
+          });
+        }
+      }catch(te){}
     }
 
     box.innerHTML=list.length?'':'<div class="empty">ยังไม่มีภารกิจ</div>';
@@ -1418,6 +1486,203 @@
         loadAdminGiftHistory();
       }
     }catch(e){}
+  }
+
+  // --- Admin Trade Logic ---
+  let adminCustBalances = {};
+  let submittingTrade = false;
+
+  async function loadAdminTrades(){
+    const fromSel = document.getElementById('tradeFromUser');
+    const toSel = document.getElementById('tradeToUser');
+    const histBox = document.getElementById('adminTradeHistoryList');
+    if(!fromSel || !toSel || !histBox) return;
+
+    const prevFrom = fromSel.value;
+    const prevTo = toSel.value;
+
+    try{
+      const balances = await (await fetch('/api/customers/balances', {cache: 'no-store'})).json();
+      adminCustBalances = {};
+      balances.forEach(b => { adminCustBalances[b.name] = b.credit; });
+
+      fromSel.innerHTML = '<option value="">-- เลือกลูกค้าต้นทาง --</option>';
+      toSel.innerHTML = '<option value="">-- เลือกลูกค้าปลายทาง --</option>';
+
+      balances.forEach(b => {
+        const opt1 = document.createElement('option');
+        opt1.value = b.name;
+        opt1.textContent = b.name + ' (🪙 ' + b.credit + ')';
+        fromSel.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = b.name;
+        opt2.textContent = b.name + ' (🪙 ' + b.credit + ')';
+        toSel.appendChild(opt2);
+      });
+
+      if(prevFrom && adminCustBalances.hasOwnProperty(prevFrom)) fromSel.value = prevFrom;
+      if(prevTo && adminCustBalances.hasOwnProperty(prevTo)) toSel.value = prevTo;
+
+      updateTradeFromBalance();
+      updateTradeToBalance();
+    }catch(e){}
+
+    histBox.innerHTML = '<div class="empty" style="padding:15px 0">กำลังโหลดประวัติ...</div>';
+    try{
+      const trades = await (await fetch('/api/trades', {cache: 'no-store'})).json();
+      if(trades && trades.length) saveLocalBackup('trades', trades);
+      if(!trades || !trades.length){
+        histBox.innerHTML = '<div class="empty" style="padding:15px 0">ยังไม่มีประวัติการเทรด</div>';
+        return;
+      }
+      histBox.innerHTML = '';
+      trades.forEach(t => {
+        const d = document.createElement('div');
+        d.className = 'qcard';
+        if(t.cancelled) d.style.opacity = '0.65';
+        const timeStr = new Date(t.time).toLocaleString('th-TH', {dateStyle:'short', timeStyle:'short'});
+        const badgeClass = t.cancelled ? 'badge rej' : 'credit';
+        const badgeTxt = t.cancelled ? 'ยกเลิกแล้ว' : '🪙 ' + t.amount;
+
+        let actHtml = '';
+        if(!t.cancelled){
+          actHtml = '<div style="margin-top:8px;display:flex;justify-content:flex-end">'
+            + '<button class="mini" style="background:#fee2e2;color:#dc2626;border:none;padding:5px 10px;border-radius:10px;cursor:pointer;font-weight:600" onclick="rollbackTrade(' + t.id + ')">↩️ ย้อนคืนเครดิต</button>'
+            + '</div>';
+        }
+
+        d.innerHTML = '<div class="qtop"><b style="color:#2b2a3d">' + esc(t.fromUser) + ' ➜ ' + esc(t.toUser) + '</b><span class="' + badgeClass + '">' + badgeTxt + '</span></div>'
+          + (t.note ? '<p style="color:#6f6d85;margin:4px 0">' + esc(t.note) + '</p>' : '')
+          + '<div class="who">เวลา: ' + timeStr + '</div>'
+          + actHtml;
+        histBox.appendChild(d);
+      });
+    }catch(e){
+      histBox.innerHTML = '<div class="empty" style="padding:15px 0">โหลดประวัติไม่สำเร็จ</div>';
+    }
+  }
+
+  function updateTradeFromBalance(){
+    const sel = document.getElementById('tradeFromUser');
+    const info = document.getElementById('tradeFromBalInfo');
+    if(!sel || !info) return;
+    const user = sel.value;
+    if(user && adminCustBalances.hasOwnProperty(user)){
+      info.textContent = 'ยอดเครดิตคงเหลือ: 🪙 ' + adminCustBalances[user];
+      info.style.color = '#7c5cff';
+      info.style.fontWeight = '600';
+    }else{
+      info.textContent = 'ยอดเครดิตคงเหลือ: -';
+      info.style.color = '#8a88a0';
+      info.style.fontWeight = 'normal';
+    }
+  }
+
+  function updateTradeToBalance(){
+    const sel = document.getElementById('tradeToUser');
+    const info = document.getElementById('tradeToBalInfo');
+    if(!sel || !info) return;
+    const user = sel.value;
+    if(user && adminCustBalances.hasOwnProperty(user)){
+      info.textContent = 'ยอดเครดิตคงเหลือ: 🪙 ' + adminCustBalances[user];
+      info.style.color = '#22c58b';
+      info.style.fontWeight = '600';
+    }else{
+      info.textContent = 'ยอดเครดิตคงเหลือ: -';
+      info.style.color = '#8a88a0';
+      info.style.fontWeight = 'normal';
+    }
+  }
+
+  function swapTradeUsers(){
+    const fromSel = document.getElementById('tradeFromUser');
+    const toSel = document.getElementById('tradeToUser');
+    if(!fromSel || !toSel) return;
+    const tmp = fromSel.value;
+    fromSel.value = toSel.value;
+    toSel.value = tmp;
+    updateTradeFromBalance();
+    updateTradeToBalance();
+  }
+
+  async function submitAdminTrade(){
+    if(submittingTrade) return;
+    const fromUser = document.getElementById('tradeFromUser').value;
+    const toUser = document.getElementById('tradeToUser').value;
+    const amountVal = document.getElementById('tradeAmount').value;
+    const note = document.getElementById('tradeNote').value.trim();
+    const errBox = document.getElementById('tradeErr');
+    const btn = document.getElementById('tradeSubmitBtn');
+
+    errBox.textContent = '';
+
+    if(!fromUser || !toUser){
+      errBox.textContent = 'กรุณาเลือกลูกค้าทั้งผู้โอนและผู้รับ';
+      return;
+    }
+    if(fromUser === toUser){
+      errBox.textContent = 'ผู้โอนและผู้รับต้องไม่ใช่คนเดียวกัน';
+      return;
+    }
+    const amount = Number(amountVal);
+    if(!amount || amount <= 0){
+      errBox.textContent = 'กรุณาระบุจำนวนเครดิตที่ถูกต้อง (มากกว่า 0)';
+      return;
+    }
+
+    const senderCredit = adminCustBalances[fromUser] || 0;
+    if(amount > senderCredit){
+      errBox.textContent = 'เครดิตของผู้โอนไม่เพียงพอ (มี 🪙 ' + senderCredit + ' แต่ต้องการโอน 🪙 ' + amount + ')';
+      return;
+    }
+
+    submittingTrade = true;
+    btn.disabled = true;
+    btn.textContent = 'กำลังทำรายการ...';
+
+    try{
+      const res = await fetch('/api/trades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromUser, toUser, amount, note })
+      });
+      const data = await res.json();
+      if(!res.ok){
+        errBox.textContent = data.error || 'ทำรายการไม่สำเร็จ';
+        return;
+      }
+      showToast('✓ โอนเครดิตสำเร็จ!');
+      document.getElementById('tradeAmount').value = '';
+      document.getElementById('tradeNote').value = '';
+      loadAdminTrades();
+    }catch(e){
+      errBox.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
+    }finally{
+      submittingTrade = false;
+      btn.disabled = false;
+      btn.textContent = '🔄 ยืนยันการโอนเครดิต';
+    }
+  }
+
+  async function rollbackTrade(tradeId){
+    if(!confirm('คุณต้องการยกเลิกการเทรดนี้ และดึงเครดิตคืนใช่หรือไม่?')) return;
+    try{
+      const res = await fetch('/api/trades/rollback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: tradeId })
+      });
+      const data = await res.json();
+      if(!res.ok){
+        alert(data.error || 'ไม่สามารถย้อนคืนเครดิตได้');
+        return;
+      }
+      showToast('✓ ย้อนคืนเครดิตเรียบร้อย');
+      loadAdminTrades();
+    }catch(e){
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
   }
 
   // --- Admin Shop Logic ---
