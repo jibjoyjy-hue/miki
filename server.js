@@ -19,12 +19,15 @@ const getUserBalance = (name) => {
   const spent = read('redemptions').filter(r => r.user === name && r.status !== 'cancelled')
     .reduce((s, r) => s + (Number(r.credit) || 0), 0);
   const trades = read('trades');
-  const tradeIn = trades.filter(t => t.toUser === name && !t.cancelled)
+  const tradeIn = trades.filter(t => t.toUser === name && (t.status === 'approved' || (!t.status && !t.cancelled)))
     .reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  const tradeOut = trades.filter(t => t.fromUser === name && !t.cancelled)
+  const tradeOut = trades.filter(t => t.fromUser === name && (t.status === 'approved' || (!t.status && !t.cancelled)))
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const pendingTradeOut = trades.filter(t => t.fromUser === name && t.status === 'pending')
     .reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const credit = Math.max(0, earned + giftCredits + tradeIn - spent - tradeOut);
-  return { credit, earned, giftCredits, spent, tradeIn, tradeOut };
+  const availableCredit = Math.max(0, credit - pendingTradeOut);
+  return { credit, availableCredit, pendingTradeOut, earned, giftCredits, spent, tradeIn, tradeOut };
 };
 
 const send = (res, code, obj) => {
@@ -224,6 +227,7 @@ http.createServer((req, res) => {
       const toUser = String((j && j.toUser) || '').trim();
       const amount = Math.max(1, Math.floor(Number(j && j.amount) || 0));
       const note = String((j && j.note) || '').trim().slice(0, 200);
+      const isDirect = Boolean(j && j.direct);
 
       if (!fromUser || !toUser) {
         return send(res, 400, { error: 'กรุณาเลือกทั้งผู้โอนและผู้รับ' });
@@ -235,11 +239,19 @@ http.createServer((req, res) => {
         return send(res, 400, { error: 'จำนวนเครดิตต้องมากกว่า 0' });
       }
 
-      const senderCredit = getUserBalance(fromUser).credit;
-      if (senderCredit < amount) {
-        return send(res, 400, {
-          error: 'เครดิตของผู้โอนไม่เพียงพอ (มี 🪙 ' + senderCredit + ' แต่ต้องการโอน 🪙 ' + amount + ')'
-        });
+      const balInfo = getUserBalance(fromUser);
+      if (isDirect) {
+        if (balInfo.credit < amount) {
+          return send(res, 400, {
+            error: 'เครดิตของผู้โอนไม่เพียงพอ (มี 🪙 ' + balInfo.credit + ' แต่ต้องการโอน 🪙 ' + amount + ')'
+          });
+        }
+      } else {
+        if (balInfo.availableCredit < amount) {
+          return send(res, 400, {
+            error: 'เครดิตที่ใช้เทรดได้ไม่เพียงพอ (คงเหลือ 🪙 ' + balInfo.credit + ', อยู่ระหว่างรออนุมัติ 🪙 ' + balInfo.pendingTradeOut + ', ใช้ได้ 🪙 ' + balInfo.availableCredit + ')'
+          });
+        }
       }
 
       const trade = {
@@ -248,6 +260,8 @@ http.createServer((req, res) => {
         toUser,
         amount,
         note,
+        status: isDirect ? 'approved' : 'pending',
+        createdBy: isDirect ? 'admin' : fromUser,
         cancelled: false,
         time: new Date().toISOString()
       };
@@ -259,27 +273,131 @@ http.createServer((req, res) => {
       const msgs = read('messages');
       const nowIso = new Date().toISOString();
       const noteTxt = note ? ' (หมายเหตุ: ' + note + ')' : '';
-      msgs.push({
-        id: Date.now() + 1,
-        user: fromUser,
-        fromAdmin: true,
-        text: '🔄 มีการโอนเครดิต 🪙 ' + amount + ' จากคุณไปยัง "' + toUser + '" เรียบร้อยแล้ว' + noteTxt,
-        readByAdmin: true,
-        readByUser: false,
-        time: nowIso
-      });
-      msgs.push({
-        id: Date.now() + 2,
-        user: toUser,
-        fromAdmin: true,
-        text: '🔄 คุณได้รับโอนเครดิต 🪙 ' + amount + ' จาก "' + fromUser + '" เรียบร้อยแล้ว!' + noteTxt,
-        readByAdmin: true,
-        readByUser: false,
-        time: nowIso
-      });
+
+      if (isDirect) {
+        msgs.push({
+          id: Date.now() + 1,
+          user: fromUser,
+          fromAdmin: true,
+          text: '🔄 แอดมินได้โอนเครดิต 🪙 ' + amount + ' จากคุณไปยัง "' + toUser + '" เรียบร้อยแล้ว' + noteTxt,
+          readByAdmin: true,
+          readByUser: false,
+          time: nowIso
+        });
+        msgs.push({
+          id: Date.now() + 2,
+          user: toUser,
+          fromAdmin: true,
+          text: '🔄 คุณได้รับโอนเครดิต 🪙 ' + amount + ' จาก "' + fromUser + '" เรียบร้อยแล้ว!' + noteTxt,
+          readByAdmin: true,
+          readByUser: false,
+          time: nowIso
+        });
+      } else {
+        msgs.push({
+          id: Date.now() + 1,
+          user: fromUser,
+          fromAdmin: true,
+          text: '🔄 คุณได้ส่งคำขอเทรดเครดิต 🪙 ' + amount + ' ให้ "' + toUser + '" แล้ว (รอแอดมินอนุมัติ)' + noteTxt,
+          readByAdmin: true,
+          readByUser: false,
+          time: nowIso
+        });
+      }
       write('messages', msgs);
 
       return send(res, 201, { ok: true, trade });
+    });
+  }
+
+  if (url === '/api/trades/decide' && req.method === 'POST') {
+    return body(req, (j) => {
+      const tradeId = j && j.id;
+      const decision = j && j.status;
+      if (decision !== 'approved' && decision !== 'rejected') {
+        return send(res, 400, { error: 'bad decision status' });
+      }
+
+      const trades = read('trades');
+      const trade = trades.find(t => String(t.id) === String(tradeId));
+      if (!trade) return send(res, 404, { error: 'ไม่พบคำขอเทรดนี้' });
+      if (trade.status !== 'pending') {
+        return send(res, 400, { error: 'คำขอนี้ได้รับการตัดสินไปแล้ว (' + trade.status + ')' });
+      }
+
+      if (decision === 'approved') {
+        const senderBal = getUserBalance(trade.fromUser).credit;
+        if (senderBal < trade.amount) {
+          return send(res, 400, {
+            error: 'เครดิตของผู้โอน (' + trade.fromUser + ') ปัจจุบันมีเพียง 🪙 ' + senderBal + ' ไม่พอโอน 🪙 ' + trade.amount
+          });
+        }
+      }
+
+      trade.status = decision;
+      trade.decidedAt = new Date().toISOString();
+      write('trades', trades);
+
+      const msgs = read('messages');
+      const nowIso = new Date().toISOString();
+      const noteTxt = trade.note ? ' (หมายเหตุ: ' + trade.note + ')' : '';
+
+      if (decision === 'approved') {
+        msgs.push({
+          id: Date.now() + 1,
+          user: trade.fromUser,
+          fromAdmin: true,
+          text: '✓ แอดมินอนุมัติคำขอเทรดเครดิต 🪙 ' + trade.amount + ' ให้ "' + trade.toUser + '" เรียบร้อยแล้ว!' + noteTxt,
+          readByAdmin: true,
+          readByUser: false,
+          time: nowIso
+        });
+        msgs.push({
+          id: Date.now() + 2,
+          user: trade.toUser,
+          fromAdmin: true,
+          text: '🔄 คุณได้รับโอนเครดิต 🪙 ' + trade.amount + ' จาก "' + trade.fromUser + '" (แอดมินอนุมัติแล้ว)' + noteTxt,
+          readByAdmin: true,
+          readByUser: false,
+          time: nowIso
+        });
+      } else {
+        msgs.push({
+          id: Date.now() + 1,
+          user: trade.fromUser,
+          fromAdmin: true,
+          text: '❌ คำขอเทรดเครดิต 🪙 ' + trade.amount + ' ให้ "' + trade.toUser + '" ถูกปฏิเสธโดยแอดมิน',
+          readByAdmin: true,
+          readByUser: false,
+          time: nowIso
+        });
+      }
+      write('messages', msgs);
+
+      return send(res, 200, { ok: true, trade });
+    });
+  }
+
+  if (url === '/api/trades/cancel' && req.method === 'POST') {
+    return body(req, (j) => {
+      const tradeId = j && j.id;
+      const user = String((j && j.user) || '').trim();
+      const trades = read('trades');
+      const trade = trades.find(t => String(t.id) === String(tradeId));
+      if (!trade) return send(res, 404, { error: 'ไม่พบคำขอนี้' });
+      if (trade.status !== 'pending') {
+        return send(res, 400, { error: 'ไม่สามารถยกเลิกคำขอที่ดำเนินการแล้วได้' });
+      }
+      if (user && trade.fromUser !== user) {
+        return send(res, 403, { error: 'คุณไม่ใช่ผู้ส่งคำขอนี้' });
+      }
+
+      trade.status = 'cancelled';
+      trade.cancelled = true;
+      trade.cancelledAt = new Date().toISOString();
+      write('trades', trades);
+
+      return send(res, 200, { ok: true, trade });
     });
   }
 
@@ -289,7 +407,12 @@ http.createServer((req, res) => {
       const trades = read('trades');
       const trade = trades.find(t => String(t.id) === String(tradeId));
       if (!trade) return send(res, 404, { error: 'ไม่พบรายการเทรด' });
-      if (trade.cancelled) return send(res, 400, { error: 'รายการนี้ถูกยกเลิกไปแล้ว' });
+      if (trade.cancelled || trade.status === 'cancelled') {
+        return send(res, 400, { error: 'รายการนี้ถูกยกเลิกไปแล้ว' });
+      }
+      if (trade.status !== 'approved' && trade.status) {
+        return send(res, 400, { error: 'เฉพาะรายการที่อนุมัติแล้วเท่านั้นที่ย้อนคืนได้' });
+      }
 
       const recBal = getUserBalance(trade.toUser).credit;
       if (recBal < trade.amount) {
@@ -299,6 +422,7 @@ http.createServer((req, res) => {
       }
 
       trade.cancelled = true;
+      trade.status = 'cancelled';
       trade.cancelledAt = new Date().toISOString();
       write('trades', trades);
 
