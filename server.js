@@ -11,19 +11,20 @@ const write = (n, d) => fs.writeFileSync(file(n), JSON.stringify(d, null, 2));
 const readShop = () => read('shop');
 
 const getUserBalance = (name) => {
-  const earned = read('claims').filter(c => c.name === name && c.status === 'approved')
+  const norm = String(name || '').trim().toLowerCase();
+  const earned = read('claims').filter(c => (c.name || '').toLowerCase() === norm && c.status === 'approved')
     .reduce((s, c) => s + (Number(c.credit) || 0), 0);
   const giftCredits = read('gifts')
-    .filter(g => Array.isArray(g.recipients) && g.recipients.includes(name))
+    .filter(g => Array.isArray(g.recipients) && g.recipients.some(r => (r || '').toLowerCase() === norm))
     .reduce((s, g) => s + (Number(g.credit) || 0), 0);
-  const spent = read('redemptions').filter(r => r.user === name && r.status !== 'cancelled')
+  const spent = read('redemptions').filter(r => (r.user || '').toLowerCase() === norm && r.status !== 'cancelled')
     .reduce((s, r) => s + (Number(r.credit) || 0), 0);
   const trades = read('trades');
-  const tradeIn = trades.filter(t => t.toUser === name && (t.status === 'approved' || (!t.status && !t.cancelled)))
+  const tradeIn = trades.filter(t => (t.toUser || '').toLowerCase() === norm && (t.status === 'approved' || (!t.status && !t.cancelled)))
     .reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  const tradeOut = trades.filter(t => t.fromUser === name && (t.status === 'approved' || (!t.status && !t.cancelled)))
+  const tradeOut = trades.filter(t => (t.fromUser || '').toLowerCase() === norm && (t.status === 'approved' || (!t.status && !t.cancelled)))
     .reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  const pendingTradeOut = trades.filter(t => t.fromUser === name && t.status === 'pending')
+  const pendingTradeOut = trades.filter(t => (t.fromUser || '').toLowerCase() === norm && t.status === 'pending')
     .reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const credit = Math.max(0, earned + giftCredits + tradeIn - spent - tradeOut);
   const availableCredit = Math.max(0, credit - pendingTradeOut);
@@ -47,28 +48,105 @@ http.createServer((req, res) => {
     const list = read('requests').map((r, i) => ({
       id: r.id || (Date.parse(r.time) ? Date.parse(r.time) + i : i + 1),
       name: r.name,
+      username: r.username || r.name,
+      password: r.password || '',
+      hasPassword: Boolean(r.password),
       time: r.time || new Date().toISOString(),
       status: r.status || 'pending'
     }));
     return send(res, 200, list);
   }
 
-  if (url === '/api/requests' && req.method === 'POST') {
+  if ((url === '/api/register' || url === '/api/requests') && req.method === 'POST') {
     return body(req, (j) => {
       const name = String((j && j.name) || '').trim().slice(0, 60);
-      if (!name) return send(res, 400, { error: 'name required' });
+      const username = String((j && (j.username || j.name)) || '').trim().slice(0, 60);
+      const password = String((j && j.password) || '').trim().slice(0, 60);
+      if (!name) return send(res, 400, { error: 'name_required', message: 'กรุณากรอกชื่อ' });
+      if (!username) return send(res, 400, { error: 'username_required', message: 'กรุณากรอกชื่อผู้ใช้' });
+
       const list = read('requests');
-      const existing = list.find(x => x.name.toLowerCase() === name.toLowerCase());
+      const existing = list.find(x => 
+        (x.username && x.username.toLowerCase() === username.toLowerCase()) || 
+        (x.name && x.name.toLowerCase() === name.toLowerCase())
+      );
       if (existing) {
-        if (!existing.id) existing.id = Date.now();
-        if (!existing.status) existing.status = 'pending';
-        write('requests', list);
-        return send(res, 200, { ok: true, existing: true, status: existing.status, id: existing.id });
+        if (password && existing.password && existing.password === password) {
+          return send(res, 200, {
+            ok: true,
+            existing: true,
+            id: existing.id,
+            name: existing.name,
+            username: existing.username || existing.name,
+            status: existing.status || 'pending'
+          });
+        }
+        return send(res, 400, {
+          error: 'user_exists',
+          message: 'ชื่อหรือชื่อผู้ใช้นี้มีคนใช้แล้ว หากเป็นบัญชีของคุณกรุณาเลือกเมนู "เข้าสู่ระบบ"'
+        });
       }
-      const item = { id: Date.now(), name, status: 'pending', time: new Date().toISOString() };
+
+      const item = {
+        id: Date.now(),
+        name,
+        username,
+        password: password || '1234',
+        status: 'pending',
+        time: new Date().toISOString()
+      };
       list.push(item);
       write('requests', list);
-      send(res, 201, { ok: true, status: 'pending', id: item.id });
+      send(res, 201, {
+        ok: true,
+        status: 'pending',
+        id: item.id,
+        name: item.name,
+        username: item.username
+      });
+    });
+  }
+
+  if (url === '/api/login' && req.method === 'POST') {
+    return body(req, (j) => {
+      const username = String((j && (j.username || j.name)) || '').trim();
+      const password = String((j && j.password) || '').trim();
+      if (!username) return send(res, 400, { error: 'username_required', message: 'กรุณากรอกชื่อผู้ใช้' });
+
+      const list = read('requests');
+      const norm = username.toLowerCase();
+      const r = list.find(x => 
+        (x.username && x.username.toLowerCase() === norm) || 
+        (x.name && x.name.toLowerCase() === norm)
+      );
+
+      if (!r) {
+        return send(res, 404, {
+          error: 'user_not_found',
+          message: 'ไม่พบบัญชีผู้ใช้นี้ กรุณาตรวจสอบชื่อผู้ใช้หรือกดสมัครแอคเคานต์ใหม่'
+        });
+      }
+
+      if (r.password) {
+        if (!password || String(r.password).trim() !== password) {
+          return send(res, 401, {
+            error: 'wrong_password',
+            message: 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง'
+          });
+        }
+      } else if (password) {
+        // Set password for legacy account
+        r.password = password;
+        write('requests', list);
+      }
+
+      return send(res, 200, {
+        ok: true,
+        id: r.id,
+        name: r.name,
+        username: r.username || r.name,
+        status: r.status || 'pending'
+      });
     });
   }
 
@@ -90,24 +168,39 @@ http.createServer((req, res) => {
   }
 
   if (url === '/api/requests/check' && req.method === 'GET') {
-    const name = new URL(req.url, 'http://x').searchParams.get('name') || '';
+    const name = (new URL(req.url, 'http://x').searchParams.get('name') || '').trim().toLowerCase();
     const list = read('requests');
-    const r = list.find(x => x.name.toLowerCase() === name.toLowerCase().trim());
+    const r = list.find(x => 
+      (x.name && x.name.toLowerCase() === name) ||
+      (x.username && x.username.toLowerCase() === name)
+    );
     if (!r) return send(res, 200, { exists: false });
-    return send(res, 200, { exists: true, status: r.status || 'pending', name: r.name });
+    return send(res, 200, {
+      exists: true,
+      status: r.status || 'pending',
+      name: r.name,
+      username: r.username || r.name
+    });
   }
 
   if (url === '/api/requests/add' && req.method === 'POST') {
     return body(req, (j) => {
       const name = String((j && j.name) || '').trim().slice(0, 60);
+      const username = String((j && (j.username || j.name)) || '').trim().slice(0, 60);
+      const password = String((j && j.password) || '1234').trim().slice(0, 60);
       if (!name) return send(res, 400, { error: 'name required' });
       const list = read('requests');
-      let r = list.find(x => x.name.toLowerCase() === name.toLowerCase());
+      let r = list.find(x => 
+        (x.name && x.name.toLowerCase() === name.toLowerCase()) || 
+        (x.username && x.username.toLowerCase() === username.toLowerCase())
+      );
       if (!r) {
-        r = { id: Date.now(), name, status: 'approved', time: new Date().toISOString() };
+        r = { id: Date.now(), name, username, password, status: 'approved', time: new Date().toISOString() };
         list.push(r);
       } else {
         r.status = 'approved';
+        if (!r.username) r.username = username;
+        if (!r.password) r.password = password;
       }
       write('requests', list);
       send(res, 201, { ok: true, request: r });
@@ -171,9 +264,11 @@ http.createServer((req, res) => {
       const questId = Number(j && j.questId);
       const name = String((j && j.name) || '').trim();
       const quest = read('quests').find(q => q.id === questId);
-      if (!quest || !quest.assignees.includes(name)) return send(res, 400, { error: 'invalid' });
+      if (!quest || !Array.isArray(quest.assignees) || !quest.assignees.some(a => (a || '').toLowerCase() === name.toLowerCase())) {
+        return send(res, 400, { error: 'invalid' });
+      }
       const claims = read('claims');
-      if (claims.some(c => c.questId === questId && c.name === name && c.status !== 'rejected'))
+      if (claims.some(c => c.questId === questId && (c.name || '').toLowerCase() === name.toLowerCase() && c.status !== 'rejected'))
         return send(res, 200, { ok: true, duplicate: true });
       claims.push({ id: Date.now(), questId, name, credit: quest.credit, title: quest.title, status: 'pending', time: new Date().toISOString() });
       write('claims', claims);
@@ -212,10 +307,10 @@ http.createServer((req, res) => {
   }
 
   if (url === '/api/trades' && req.method === 'GET') {
-    const user = new URL(req.url, 'http://x').searchParams.get('user') || '';
+    const user = (new URL(req.url, 'http://x').searchParams.get('user') || '').trim().toLowerCase();
     let list = read('trades');
     if (user) {
-      list = list.filter(t => t.fromUser === user || t.toUser === user);
+      list = list.filter(t => (t.fromUser || '').toLowerCase() === user || (t.toUser || '').toLowerCase() === user);
     }
     list.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
     return send(res, 200, list);
@@ -453,10 +548,10 @@ http.createServer((req, res) => {
   }
 
   if (url === '/api/gifts' && req.method === 'GET') {
-    const user = new URL(req.url, 'http://x').searchParams.get('user') || '';
+    const user = (new URL(req.url, 'http://x').searchParams.get('user') || '').trim().toLowerCase();
     const all = read('gifts');
     if (!user) return send(res, 200, all);
-    return send(res, 200, all.filter(g => Array.isArray(g.recipients) && g.recipients.includes(user)));
+    return send(res, 200, all.filter(g => Array.isArray(g.recipients) && g.recipients.some(r => (r || '').toLowerCase() === user)));
   }
 
   if (url === '/api/gifts' && req.method === 'POST') {
@@ -608,10 +703,10 @@ http.createServer((req, res) => {
   }
 
   if (url === '/api/shop/redemptions' && req.method === 'GET') {
-    const user = new URL(req.url, 'http://x').searchParams.get('user') || '';
+    const user = (new URL(req.url, 'http://x').searchParams.get('user') || '').trim().toLowerCase();
     const all = read('redemptions');
     if (!user) return send(res, 200, all);
-    return send(res, 200, all.filter(r => r.user === user));
+    return send(res, 200, all.filter(r => (r.user || '').toLowerCase() === user));
   }
 
   if (url === '/api/shop/redemptions/decide' && req.method === 'POST') {
@@ -683,10 +778,14 @@ http.createServer((req, res) => {
   }
 
   if (url === '/api/messages' && req.method === 'GET') {
-    const user = new URL(req.url, 'http://x').searchParams.get('user') || '';
+    const user = (new URL(req.url, 'http://x').searchParams.get('user') || '').trim().toLowerCase();
     const all = read('messages');
     if (!user) return send(res, 200, all);
-    const filtered = all.filter(m => m.user === user || m.from === user || m.to === user);
+    const filtered = all.filter(m => 
+      (m.user || '').toLowerCase() === user || 
+      (m.from || '').toLowerCase() === user || 
+      (m.to || '').toLowerCase() === user
+    );
     return send(res, 200, filtered);
   }
 
@@ -737,20 +836,114 @@ http.createServer((req, res) => {
     });
   }
 
-  if (url === '/api/sync/customer' && req.method === 'POST') {
+  if ((url === '/api/sync/customer' || url === '/api/sync/customer-restore') && req.method === 'POST') {
     return body(req, (j) => {
       const name = String((j && j.name) || '').trim().slice(0, 60);
+      const username = String((j && (j.username || j.name)) || '').trim().slice(0, 60);
+      const password = String((j && j.password) || '').trim().slice(0, 60);
       const status = (j && j.status) === 'rejected' ? 'rejected' : 'approved';
       if (!name) return send(res, 400, { error: 'name required' });
+
+      // 1. Account / Request sync
       const list = read('requests');
-      let r = list.find(x => x.name.toLowerCase() === name.toLowerCase());
+      let r = list.find(x => 
+        (x.name && x.name.toLowerCase() === name.toLowerCase()) ||
+        (x.username && x.username.toLowerCase() === username.toLowerCase())
+      );
       if (!r) {
-        r = { id: Date.now(), name, status, time: new Date().toISOString(), restored: true };
+        r = {
+          id: Date.now(),
+          name,
+          username,
+          password: password || '1234',
+          status,
+          time: new Date().toISOString(),
+          restored: true
+        };
         list.push(r);
         write('requests', list);
-        return send(res, 201, { ok: true, restored: true, request: r });
+      } else {
+        if (!r.username) r.username = username;
+        if (!r.password && password) r.password = password;
+        write('requests', list);
       }
-      return send(res, 200, { ok: true, existing: true, request: r });
+
+      // 2. Restore quests if provided and missing on server
+      if (Array.isArray(j && j.quests) && j.quests.length) {
+        const curQuests = read('quests');
+        const curQuestIds = new Set(curQuests.map(x => String(x.id)));
+        let qAdded = 0;
+        j.quests.forEach(q => {
+          if (q && q.title && !curQuestIds.has(String(q.id))) {
+            curQuests.push(q);
+            curQuestIds.add(String(q.id));
+            qAdded++;
+          }
+        });
+        if (qAdded > 0) write('quests', curQuests);
+      }
+
+      // 3. Restore claims if provided and missing on server
+      if (Array.isArray(j && j.claims) && j.claims.length) {
+        const curClaims = read('claims');
+        const curClaimIds = new Set(curClaims.map(x => String(x.id)));
+        let cAdded = 0;
+        j.claims.forEach(c => {
+          if (c && !curClaimIds.has(String(c.id))) {
+            curClaims.push(c);
+            curClaimIds.add(String(c.id));
+            cAdded++;
+          }
+        });
+        if (cAdded > 0) write('claims', curClaims);
+      }
+
+      // 4. Restore messages if provided and missing on server
+      if (Array.isArray(j && j.messages) && j.messages.length) {
+        const curMsgs = read('messages');
+        const curMsgIds = new Set(curMsgs.map(x => String(x.id)));
+        let mAdded = 0;
+        j.messages.forEach(m => {
+          if (m && !curMsgIds.has(String(m.id))) {
+            curMsgs.push(m);
+            curMsgIds.add(String(m.id));
+            mAdded++;
+          }
+        });
+        if (mAdded > 0) write('messages', curMsgs);
+      }
+
+      // 5. Restore gifts if provided and missing on server
+      if (Array.isArray(j && j.gifts) && j.gifts.length) {
+        const curGifts = read('gifts');
+        const curGiftIds = new Set(curGifts.map(x => String(x.id)));
+        let gAdded = 0;
+        j.gifts.forEach(g => {
+          if (g && !curGiftIds.has(String(g.id))) {
+            curGifts.push(g);
+            curGiftIds.add(String(g.id));
+            gAdded++;
+          }
+        });
+        if (gAdded > 0) write('gifts', curGifts);
+      }
+
+      // 6. Restore trades if provided and missing on server
+      if (Array.isArray(j && j.trades) && j.trades.length) {
+        const curTrades = read('trades');
+        const curTradeIds = new Set(curTrades.map(x => String(x.id)));
+        let tAdded = 0;
+        j.trades.forEach(t => {
+          if (t && !curTradeIds.has(String(t.id))) {
+            curTrades.push(t);
+            curTradeIds.add(String(t.id));
+            tAdded++;
+          }
+        });
+        if (tAdded > 0) write('trades', curTrades);
+      }
+
+      return send(res, 200, { ok: true, request: r });
     });
   }
 

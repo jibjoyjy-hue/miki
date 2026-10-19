@@ -48,6 +48,10 @@
   .menu.status{background:linear-gradient(135deg,#22c58b,#5fd8b0);box-shadow:0 12px 24px rgba(34,197,139,.35)}
   .menu:hover{transform:translateY(-3px)}
   .user-lock{background:linear-gradient(135deg,#ff6b9a,#ffa36b);box-shadow:0 12px 24px rgba(255,107,154,.4)}
+  #userPage{justify-content:flex-start;padding:34px 22px 24px;gap:12px;overflow-y:auto}
+  .cust-field{display:flex;flex-direction:column;gap:4px;text-align:left}
+  .cust-field label{font-size:12px;font-weight:700;color:#6f6d85}
+  .cust-field input{padding:12px 14px;font-size:15px;border-radius:14px;text-align:left}
   .hbox{display:flex;flex-direction:column;gap:16px}
   .svhead{display:flex;justify-content:space-between;align-items:center}
   #reqList{display:flex;flex-direction:column;gap:10px;max-height:520px;overflow-y:auto}
@@ -397,12 +401,60 @@
   </div>
 
   <div class="screen" id="userPage">
-    <div class="lock user-lock">👤</div>
-    <h2>สมัครแอคเคานต์</h2>
-    <input id="uname" type="text" placeholder="ใส่ชื่อของคุณ" onkeydown="if(event.key==='Enter')sendRequest()">
-    <div class="err" id="uerr"></div>
-    <button class="btn" id="sendBtn" onclick="sendRequest()">ส่งคำขอ</button>
-    <button class="back" onclick="show('select')">← กลับ</button>
+    <div class="lock user-lock" style="width:68px;height:68px;font-size:32px;margin:0 auto 2px">👤</div>
+    <div style="text-align:center">
+      <h2 style="font-size:22px;margin:0" id="custAuthTitle">เข้าสู่ระบบลูกค้า</h2>
+      <p style="color:#8a88a0;font-size:13px;margin:4px 0 0" id="custAuthSub">ใส่ชื่อผู้ใช้และรหัสผ่านเพื่อเข้าใช้งาน</p>
+    </div>
+
+    <!-- Segmented Toggle: Login vs Register -->
+    <div style="display:flex;background:#efeaff;padding:4px;border-radius:14px;gap:4px">
+      <button id="custTabLoginBtn" class="seg-btn active" onclick="switchCustAuthMode('login')">🔑 เข้าสู่ระบบ</button>
+      <button id="custTabRegBtn" class="seg-btn" onclick="switchCustAuthMode('reg')">📝 สมัครสมาชิก</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="custLoginForm" style="display:flex;flex-direction:column;gap:10px">
+      <div class="cust-field">
+        <label>ชื่อผู้ใช้ (Username) หรือชื่อของคุณ</label>
+        <input id="loginUname" type="text" placeholder="พิมพ์ชื่อผู้ใช้" autocomplete="username" onkeydown="if(event.key==='Enter')custLogin()">
+      </div>
+      <div class="cust-field">
+        <label>รหัสผ่าน (Password)</label>
+        <input id="loginPass" type="password" placeholder="พิมพ์รหัสผ่าน" autocomplete="current-password" onkeydown="if(event.key==='Enter')custLogin()">
+      </div>
+      <div class="err" id="loginErr" style="min-height:18px;font-size:13px"></div>
+      <button class="btn" id="loginBtn" style="padding:14px;font-size:16px;background:linear-gradient(135deg,#ff6b9a,#ffa36b);box-shadow:0 8px 18px rgba(255,107,154,.35)" onclick="custLogin()">เข้าสู่ระบบ</button>
+    </div>
+
+    <!-- Register Form -->
+    <div id="custRegForm" style="display:none;flex-direction:column;gap:10px">
+      <div class="cust-field">
+        <label>ชื่อที่ต้องการให้แสดง (Display Name)</label>
+        <input id="regName" type="text" placeholder="เช่น สมชาย, นิ้ง, มอส" onkeydown="if(event.key==='Enter')document.getElementById('regUname').focus()">
+      </div>
+      <div class="cust-field">
+        <label>ชื่อผู้ใช้สำหรับล็อกอิน (Username)</label>
+        <input id="regUname" type="text" placeholder="เช่น somchai123 (สำหรับเข้าสู่ระบบ)" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('regPass').focus()">
+      </div>
+      <div class="cust-field">
+        <label>รหัสผ่าน (Password อย่างน้อย 3 ตัวอักษร)</label>
+        <input id="regPass" type="password" placeholder="ตั้งรหัสผ่านของคุณ" autocomplete="new-password" onkeydown="if(event.key==='Enter')document.getElementById('regPassConfirm').focus()">
+      </div>
+      <div class="cust-field">
+        <label>ยืนยันรหัสผ่าน (Confirm Password)</label>
+        <input id="regPassConfirm" type="password" placeholder="พิมพ์รหัสผ่านอีกครั้ง" autocomplete="new-password" onkeydown="if(event.key==='Enter')sendRegister()">
+      </div>
+      <div class="err" id="regErr" style="min-height:18px;font-size:13px"></div>
+      <button class="btn" id="regBtn" style="padding:14px;font-size:16px;background:linear-gradient(135deg,#ff6b9a,#ffa36b);box-shadow:0 8px 18px rgba(255,107,154,.35)" onclick="sendRegister()">สร้างแอคเคานต์</button>
+    </div>
+
+    <!-- Hidden compatibility inputs -->
+    <input id="uname" type="hidden">
+    <div id="uerr" style="display:none"></div>
+    <button id="sendBtn" style="display:none" onclick="sendRequest()"></button>
+
+    <button class="back" onclick="show('select')">← กลับหน้าเลือกบทบาท</button>
   </div>
 
   <div class="screen" id="userSent">
@@ -553,8 +605,19 @@
     document.getElementById(id).classList.add('active');
     document.getElementById('err').textContent='';
     document.getElementById('pw').value='';
-    document.getElementById('uerr').textContent='';
-    if(id==='userPage') document.getElementById('uname').value='';
+    const uerr = document.getElementById('uerr');
+    if(uerr) uerr.textContent='';
+    if(id==='userPage'){
+      const savedUser = localStorage.getItem('mk_last_login_user') || localStorage.getItem('mk_cust_username') || localStorage.getItem('mk_cust_name') || '';
+      const loginU = document.getElementById('loginUname');
+      if(loginU && !loginU.value) loginU.value = savedUser;
+      const loginP = document.getElementById('loginPass');
+      if(loginP) loginP.value = '';
+      const loginErr = document.getElementById('loginErr');
+      if(loginErr) loginErr.textContent = '';
+      const regErr = document.getElementById('regErr');
+      if(regErr) regErr.textContent = '';
+    }
   }
   function showToast(msg){
     let t=document.getElementById('appToast');
@@ -568,69 +631,245 @@
     t.classList.add('show');
     setTimeout(()=>t.classList.remove('show'),2200);
   }
-  let sending=false;
   let checkPollTimer=null;
   function cancelWait(){
     clearInterval(checkPollTimer);
     show('select');
   }
-  async function sendRequest(){
-    if(sending) return;
-    const name=document.getElementById('uname').value.trim();
-    if(!name){
-      document.getElementById('uerr').textContent='กรุณาใส่ชื่อ';
+
+  let currentCustAuthMode = 'login';
+  function switchCustAuthMode(mode){
+    currentCustAuthMode = mode;
+    const isLogin = mode === 'login';
+    document.getElementById('custTabLoginBtn').classList.toggle('active', isLogin);
+    document.getElementById('custTabRegBtn').classList.toggle('active', !isLogin);
+    document.getElementById('custLoginForm').style.display = isLogin ? 'flex' : 'none';
+    document.getElementById('custRegForm').style.display = !isLogin ? 'flex' : 'none';
+    document.getElementById('custAuthTitle').textContent = isLogin ? 'เข้าสู่ระบบลูกค้า' : 'สมัครแอคเคานต์ลูกค้า';
+    document.getElementById('custAuthSub').textContent = isLogin ? 'ใส่ชื่อผู้ใช้และรหัสผ่านเพื่อเข้าใช้งาน' : 'สร้างบัญชีผู้ใช้ใหม่และตั้งรหัสผ่านสำหรับเข้าซ้ำได้';
+    document.getElementById('loginErr').textContent = '';
+    document.getElementById('regErr').textContent = '';
+    if(isLogin){
+      const savedUser = localStorage.getItem('mk_last_login_user') || localStorage.getItem('mk_cust_username') || localStorage.getItem('mk_cust_name') || '';
+      const uEl = document.getElementById('loginUname');
+      if(uEl && !uEl.value) uEl.value = savedUser;
+      setTimeout(()=> (uEl && uEl.value ? document.getElementById('loginPass') : uEl)?.focus(), 100);
+    } else {
+      setTimeout(()=> document.getElementById('regName')?.focus(), 100);
+    }
+  }
+
+  function getCustCache(username){
+    if(!username) return {};
+    try{
+      return JSON.parse(localStorage.getItem('mk_cust_cache_' + username.toLowerCase().trim()) || '{}');
+    }catch(e){ return {}; }
+  }
+
+  function saveCustCache(username, data){
+    if(!username) return;
+    try{
+      const key = username.toLowerCase().trim();
+      const cur = getCustCache(key);
+      const merged = { ...cur, ...data, updatedAt: new Date().toISOString() };
+      localStorage.setItem('mk_cust_cache_' + key, JSON.stringify(merged));
+    }catch(e){}
+  }
+
+  async function syncCustRestore(name, username, password, status){
+    const cached = getCustCache(username || name);
+    try{
+      await fetch('/api/sync/customer-restore', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          name,
+          username,
+          password,
+          status,
+          quests: cached.quests || [],
+          claims: cached.claims || [],
+          messages: cached.messages || [],
+          gifts: cached.gifts || [],
+          trades: cached.trades || []
+        })
+      });
+    }catch(e){}
+  }
+
+  let loggingInCust = false;
+  async function custLogin(){
+    if(loggingInCust) return;
+    const username = document.getElementById('loginUname').value.trim();
+    const password = document.getElementById('loginPass').value.trim();
+    const errBox = document.getElementById('loginErr');
+    if(!username){
+      errBox.textContent = 'กรุณาใส่ชื่อผู้ใช้ (Username)';
+      document.getElementById('loginUname').focus();
       return;
     }
-    sending=true;
-    const btn=document.getElementById('sendBtn');
-    btn.disabled=true; btn.textContent='กำลังส่ง...';
-    document.getElementById('uerr').textContent='';
+    if(!password){
+      errBox.textContent = 'กรุณาใส่รหัสผ่าน';
+      document.getElementById('loginPass').focus();
+      return;
+    }
+    loggingInCust = true;
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true; btn.textContent = 'กำลังตรวจสอบ...';
+    errBox.textContent = '';
     try{
-      const r=await fetch('/api/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
-      if(!r.ok) throw 0;
-      const data=await r.json();
-      document.getElementById('custName').textContent=name;
+      const r = await fetch('/api/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ username, password })
+      });
+      const data = await r.json();
+      if(!r.ok){
+        errBox.textContent = data.message || 'เข้าสู่ระบบไม่สำเร็จ';
+        return;
+      }
 
-      if(data.status==='approved'){
-        localStorage.setItem('mk_cust_name', name);
-        localStorage.setItem('mk_cust_status', 'approved');
+      // Store authenticated session
+      localStorage.setItem('mk_cust_name', data.name);
+      localStorage.setItem('mk_cust_username', data.username || data.name);
+      localStorage.setItem('mk_cust_status', data.status || 'approved');
+      localStorage.setItem('mk_cust_logged', 'true');
+      localStorage.setItem('mk_last_login_user', data.username || data.name);
+
+      // Restore data if server restarted
+      await syncCustRestore(data.name, data.username || data.name, password, data.status);
+
+      document.getElementById('custName').textContent = data.name;
+
+      if(data.status === 'approved'){
         show('custMain');
         loadMyQuests();
+        showToast('✓ ยินดีต้อนรับ ' + data.name);
         return;
       }
-      if(data.status==='rejected'){
-        document.getElementById('uerr').textContent='คำขอของคุณถูกปฏิเสธ กรุณาติดต่อแอดมิน';
+      if(data.status === 'rejected'){
+        errBox.textContent = 'บัญชีของคุณถูกระงับหรือปฏิเสธ กรุณาติดต่อแอดมิน';
         return;
       }
 
-      document.getElementById('sentTitle').textContent='ส่งคำขอเรียบร้อย';
-      document.getElementById('waitNotice').innerHTML='รอแอดมินอนุมัติ...<br><small style="color:#7c5cff;font-size:13px;display:block;margin-top:6px">ระบบจะเข้าสู่หน้าหลักอัตโนมัติเมื่อแอดมินกดอนุมัติ</small>';
+      // Pending approval
+      document.getElementById('sentTitle').textContent = 'รอแอดมินอนุมัติ';
+      document.getElementById('waitNotice').innerHTML = 'สวัสดีคุณ <b>' + esc(data.name) + '</b><br>รอแอดมินอนุมัติการใช้งาน...<br><small style="color:#7c5cff;font-size:13px;display:block;margin-top:6px">ระบบจะเข้าสู่หน้าหลักอัตโนมัติเมื่อแอดมินกดอนุมัติ</small>';
       show('userSent');
-      clearInterval(checkPollTimer);
-      checkPollTimer=setInterval(async()=>{
-        if(!document.getElementById('userSent').classList.contains('active')){
-          clearInterval(checkPollTimer);
-          return;
-        }
-        try{
-          const c=await (await fetch('/api/requests/check?name='+encodeURIComponent(name),{cache:'no-store'})).json();
-          if(c.exists && c.status==='approved'){
-            clearInterval(checkPollTimer);
-            localStorage.setItem('mk_cust_name', name);
-            localStorage.setItem('mk_cust_status', 'approved');
-            document.getElementById('waitNotice').innerHTML='<b style="color:#22c58b">✓ ได้รับการอนุมัติแล้ว! กำลังเข้าสู่ระบบ...</b>';
-            setTimeout(()=>{ show('custMain'); loadMyQuests(); },600);
-          } else if(c.exists && c.status==='rejected'){
-            clearInterval(checkPollTimer);
-            document.getElementById('waitNotice').innerHTML='<b style="color:#e5484d">✕ คำขอถูกปฏิเสธ</b>';
-          }
-        }catch(e){}
-      },2000);
+      startCustApprovalPolling(data.name, data.username);
     }catch(e){
-      document.getElementById('uerr').textContent='ส่งไม่สำเร็จ ลองใหม่อีกครั้ง';
+      errBox.textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่';
     }finally{
-      sending=false; btn.disabled=false; btn.textContent='ส่งคำขอ';
+      loggingInCust = false; btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
     }
+  }
+
+  let registeringCust = false;
+  async function sendRegister(){
+    if(registeringCust) return;
+    const name = document.getElementById('regName').value.trim();
+    const username = document.getElementById('regUname').value.trim();
+    const password = document.getElementById('regPass').value.trim();
+    const confirm = document.getElementById('regPassConfirm').value.trim();
+    const errBox = document.getElementById('regErr');
+
+    if(!name){
+      errBox.textContent = 'กรุณากรอกชื่อที่ต้องการให้แสดง';
+      document.getElementById('regName').focus();
+      return;
+    }
+    if(!username){
+      errBox.textContent = 'กรุณากรอกชื่อผู้ใช้สำหรับล็อกอิน';
+      document.getElementById('regUname').focus();
+      return;
+    }
+    if(!password){
+      errBox.textContent = 'กรุณาตั้งรหัสผ่าน';
+      document.getElementById('regPass').focus();
+      return;
+    }
+    if(password.length < 3){
+      errBox.textContent = 'รหัสผ่านต้องมีอย่างน้อย 3 ตัวอักษร';
+      document.getElementById('regPass').focus();
+      return;
+    }
+    if(password !== confirm){
+      errBox.textContent = 'รหัสผ่านทั้งสองช่องไม่ตรงกัน';
+      document.getElementById('regPassConfirm').focus();
+      return;
+    }
+
+    registeringCust = true;
+    const btn = document.getElementById('regBtn');
+    btn.disabled = true; btn.textContent = 'กำลังสมัคร...';
+    errBox.textContent = '';
+    try{
+      const r = await fetch('/api/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name, username, password })
+      });
+      const data = await r.json();
+      if(!r.ok){
+        errBox.textContent = data.message || 'สมัครไม่สำเร็จ กรุณาลองใหม่';
+        return;
+      }
+
+      localStorage.setItem('mk_cust_name', data.name);
+      localStorage.setItem('mk_cust_username', data.username || username);
+      localStorage.setItem('mk_cust_status', data.status || 'pending');
+      localStorage.setItem('mk_cust_logged', 'true');
+      localStorage.setItem('mk_last_login_user', data.username || username);
+
+      document.getElementById('custName').textContent = data.name;
+
+      if(data.status === 'approved'){
+        show('custMain');
+        loadMyQuests();
+        showToast('✓ สมัครและเข้าสู่ระบบสำเร็จ');
+        return;
+      }
+
+      document.getElementById('sentTitle').textContent = 'ส่งคำขอสมัครสมาชิกแล้ว';
+      document.getElementById('waitNotice').innerHTML = 'สวัสดีคุณ <b>' + esc(data.name) + '</b><br>รอแอดมินอนุมัติแอคเคานต์...<br><small style="color:#7c5cff;font-size:13px;display:block;margin-top:6px">รหัสผ่านของคุณถูกบันทึกแล้ว สามารถเข้าซ้ำได้เมื่อหลุด</small>';
+      show('userSent');
+      startCustApprovalPolling(data.name, data.username || username);
+    }catch(e){
+      errBox.textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่';
+    }finally{
+      registeringCust = false; btn.disabled = false; btn.textContent = 'สร้างแอคเคานต์';
+    }
+  }
+
+  function startCustApprovalPolling(name, username){
+    clearInterval(checkPollTimer);
+    checkPollTimer = setInterval(async()=>{
+      if(!document.getElementById('userSent').classList.contains('active')){
+        clearInterval(checkPollTimer);
+        return;
+      }
+      try{
+        const c = await (await fetch('/api/requests/check?name=' + encodeURIComponent(username || name), {cache:'no-store'})).json();
+        if(c.exists && c.status === 'approved'){
+          clearInterval(checkPollTimer);
+          const canonicalName = c.name || name;
+          localStorage.setItem('mk_cust_name', canonicalName);
+          localStorage.setItem('mk_cust_username', c.username || username || canonicalName);
+          localStorage.setItem('mk_cust_status', 'approved');
+          localStorage.setItem('mk_cust_logged', 'true');
+          document.getElementById('custName').textContent = canonicalName;
+          document.getElementById('waitNotice').innerHTML = '<b style="color:#22c58b">✓ ได้รับการอนุมัติแล้ว! กำลังเข้าสู่ระบบ...</b>';
+          setTimeout(()=>{ show('custMain'); loadMyQuests(); }, 600);
+        } else if(c.exists && c.status === 'rejected'){
+          clearInterval(checkPollTimer);
+          document.getElementById('waitNotice').innerHTML = '<b style="color:#e5484d">✕ คำขอถูกปฏิเสธ</b>';
+        }
+      }catch(e){}
+    }, 2000);
+  }
+
+  async function sendRequest(){
+    custLogin();
   }
   let statusTimer=null;
   let currentReqTab='chat';
@@ -668,8 +907,10 @@
 
       d.innerHTML='<div class="req-row"><div class="av"></div><div class="rt"><b></b><small></small></div>'+badgeHtml+'</div>'+actHtml;
       d.querySelector('.av').textContent=r.name.charAt(0).toUpperCase();
-      d.querySelector('b').textContent=r.name;
-      d.querySelector('small').textContent=new Date(r.time).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
+      const uTag = r.username && r.username.toLowerCase() !== r.name.toLowerCase() ? ' <span style="color:#7c5cff;font-size:12px;font-weight:400">(@' + esc(r.username) + ')</span>' : '';
+      d.querySelector('b').innerHTML = esc(r.name) + uTag;
+      const passTag = r.password ? ' • <span style="color:#6a4cff;font-weight:700">🔑 รหัส: ' + esc(r.password) + '</span>' : '';
+      d.querySelector('small').innerHTML = new Date(r.time).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}) + passTag;
 
       const okBtn = d.querySelector('.ok-btn');
       if(okBtn) okBtn.onclick=()=>decideRequest(r.id, r.name, 'approved');
@@ -694,14 +935,16 @@
   async function addCustomer(){
     const name=prompt('กรอกชื่อลูกค้าที่ต้องการเพิ่ม (จะได้รับการอนุมัติทันที):');
     if(!name || !name.trim()) return;
+    const username = prompt('ตั้งชื่อผู้ใช้ (Username สำหรับล็อกอิน) หรือกดตกลงเพื่อใช้ชื่อเดียวกัน:', name.trim()) || name.trim();
+    const password = prompt('ตั้งรหัสผ่านเริ่มต้น (ค่าเริ่มต้น: 1234):', '1234') || '1234';
     try{
       const r=await fetch('/api/requests/add',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name: name.trim()})
+        body:JSON.stringify({name: name.trim(), username: username.trim(), password: password.trim()})
       });
       if(r.ok){
-        alert('เพิ่มลูกค้า "'+name.trim()+'" สำเร็จและอนุมัติเรียบร้อย');
+        alert('เพิ่มลูกค้า "'+name.trim()+'" สำเร็จและอนุมัติเรียบร้อย\nUsername: ' + username.trim() + '\nPassword: ' + password.trim());
         if(document.getElementById('statusView').style.display!=='none') loadStatus();
       }
     }catch(e){
@@ -836,9 +1079,19 @@
     } else document.getElementById('err').textContent='ข้อความไม่ถูกต้อง';
   }
   function custLogout(){
-    localStorage.removeItem('mk_cust_name');
+    const currentName = localStorage.getItem('mk_cust_name') || '';
+    const currentUsername = localStorage.getItem('mk_cust_username') || currentName;
+    if(currentUsername) localStorage.setItem('mk_last_login_user', currentUsername);
+    localStorage.removeItem('mk_cust_logged');
     localStorage.removeItem('mk_cust_status');
-    show('select');
+    clearInterval(custChatTimer);
+    show('userPage');
+    switchCustAuthMode('login');
+    const loginU = document.getElementById('loginUname');
+    if(loginU) loginU.value = currentUsername;
+    const loginP = document.getElementById('loginPass');
+    if(loginP) loginP.value = '';
+    showToast('ออกจากระบบเรียบร้อย');
   }
   function adminLogout(){
     localStorage.removeItem('mk_admin_logged');
@@ -1066,13 +1319,15 @@
   }
   async function loadMyQuests(){
     const box=document.getElementById('myQuests');
-    const me=document.getElementById('custName').textContent;
+    const me=(document.getElementById('custName').textContent || localStorage.getItem('mk_cust_name') || '').trim();
+    if(!me) return;
     let list=[],claims=[],credit=0;
+    let myGifts = [], myTrades = [];
     try{
       const q=await (await fetch('/api/quests',{cache:'no-store'})).json();
-      claims=(await (await fetch('/api/claims',{cache:'no-store'})).json()).filter(c=>c.name===me);
+      claims=(await (await fetch('/api/claims',{cache:'no-store'})).json()).filter(c=> (c.name || '').trim().toLowerCase() === me.toLowerCase());
       credit=(await (await fetch('/api/balance?name='+encodeURIComponent(me),{cache:'no-store'})).json()).credit;
-      list=q.filter(x=>x.assignees.includes(me)).reverse();
+      list=q.filter(x=> Array.isArray(x.assignees) && x.assignees.some(a => (a || '').trim().toLowerCase() === me.toLowerCase())).reverse();
     }catch(e){ box.innerHTML='<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
     document.getElementById('myCredit').textContent=credit;
     const shopBal = document.getElementById('shopCustBalance');
@@ -1082,7 +1337,7 @@
     if(gBox){
       gBox.innerHTML = '';
       try{
-        const myGifts = await (await fetch('/api/gifts?user=' + encodeURIComponent(me), {cache:'no-store'})).json();
+        myGifts = await (await fetch('/api/gifts?user=' + encodeURIComponent(me), {cache:'no-store'})).json();
         if(myGifts && myGifts.length){
           myGifts.slice(-5).reverse().forEach(g => {
             const gd = document.createElement('div');
@@ -1098,12 +1353,12 @@
         }
       }catch(ge){}
       try{
-        const myTrades = await (await fetch('/api/trades?user=' + encodeURIComponent(me), {cache:'no-store'})).json();
+        myTrades = await (await fetch('/api/trades?user=' + encodeURIComponent(me), {cache:'no-store'})).json();
         if(myTrades && myTrades.length){
           myTrades.slice(0, 5).forEach(t => {
             const td = document.createElement('div');
             td.className = 'qcard';
-            const isRecv = t.toUser === me;
+            const isRecv = (t.toUser || '').toLowerCase() === me.toLowerCase();
             td.style.borderLeft = isRecv ? '4px solid #22c58b' : '4px solid #ffa36b';
             td.style.background = isRecv ? 'linear-gradient(135deg,#f0fdf8,#e6fbf2)' : 'linear-gradient(135deg,#fffbf5,#fff4e8)';
             const timeStr = new Date(t.time).toLocaleString('th-TH', {dateStyle:'short', timeStyle:'short'});
@@ -1115,6 +1370,9 @@
         }
       }catch(te){}
     }
+
+    const u = localStorage.getItem('mk_cust_username') || me;
+    saveCustCache(u, { quests: list, claims, gifts: myGifts, trades: myTrades, credit });
 
     box.innerHTML=list.length?'':'<div class="empty">ยังไม่มีภารกิจ</div>';
     list.forEach(q=>{
@@ -1178,7 +1436,7 @@
   }
 
   async function loadCustTrade(){
-    const me = document.getElementById('custName').textContent.trim();
+    const me = (document.getElementById('custName').textContent || localStorage.getItem('mk_cust_name') || '').trim();
     if(!me) return;
 
     // Load balance
@@ -1198,7 +1456,7 @@
       const prevVal = toSel.value;
       try{
         const reqs = await (await fetch('/api/requests', {cache: 'no-store'})).json();
-        const friends = [...new Set(reqs.filter(r => (r.status === 'approved' || !r.status) && r.name !== me).map(r => r.name))];
+        const friends = [...new Set(reqs.filter(r => (r.status === 'approved' || !r.status) && (r.name || '').toLowerCase() !== me.toLowerCase()).map(r => r.name))];
         toSel.innerHTML = '<option value="">-- เลือกเพื่อนที่ต้องการเทรด --</option>';
         if(!friends.length){
           toSel.innerHTML = '<option value="">-- ยังไม่มีลูกค้ารายอื่นในระบบ --</option>';
@@ -1368,12 +1626,16 @@
   }
   async function loadCustChat(){
     const box = document.getElementById('custChatBox');
-    const me = document.getElementById('custName').textContent;
+    const me = (document.getElementById('custName').textContent || localStorage.getItem('mk_cust_name') || '').trim();
     if(!me) return;
     let list = [];
     try{
       list = await (await fetch('/api/messages?user='+encodeURIComponent(me),{cache:'no-store'})).json();
     }catch(e){ return; }
+    if(list && list.length){
+      const u = localStorage.getItem('mk_cust_username') || me;
+      saveCustCache(u, { messages: list });
+    }
     if(!list.length){
       box.innerHTML = '<div class="empty">💬 ยังไม่มีข้อความ<br><small style="color:#a8a5b8">พิมพ์ข้อความเพื่อเริ่มคุยกับผู้ดูแล</small></div>';
       return;
@@ -1626,14 +1888,26 @@
   }
   document.getElementById('questMain') && loadQuests();
   async function checkAutoLogin(){
+    const isLogged = localStorage.getItem('mk_cust_logged') === 'true';
     const savedName = localStorage.getItem('mk_cust_name');
-    if(savedName){
+    const savedUsername = localStorage.getItem('mk_cust_username') || savedName;
+    if(isLogged && savedName){
       document.getElementById('custName').textContent = savedName;
       try{
-        const r = await fetch('/api/sync/customer',{
+        const cached = getCustCache(savedUsername) || {};
+        const r = await fetch('/api/sync/customer-restore',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({name: savedName, status: localStorage.getItem('mk_cust_status') || 'approved'})
+          body:JSON.stringify({
+            name: savedName,
+            username: savedUsername,
+            status: localStorage.getItem('mk_cust_status') || 'approved',
+            quests: cached.quests || [],
+            claims: cached.claims || [],
+            messages: cached.messages || [],
+            gifts: cached.gifts || [],
+            trades: cached.trades || []
+          })
         });
         const data = await r.json();
         if(data.request && data.request.status === 'approved'){
