@@ -8,7 +8,19 @@ const file = (n) => path.join(__dirname, n + '.json');
 const read = (n) => { try { return JSON.parse(fs.readFileSync(file(n), 'utf8')); } catch { return []; } };
 const write = (n, d) => fs.writeFileSync(file(n), JSON.stringify(d, null, 2));
 
-const readShop = () => read('shop');
+const defaultShopItems = [
+  { id: 1001, title: 'ส่วนลด 10% สำหรับการสั่งซื้อ', desc: 'ใช้เป็นส่วนลดสำหรับออเดอร์ถัดไป', credit: 50, icon: '🏷️', stock: 20 },
+  { id: 1002, title: 'ขนม / เครื่องดื่มฟรี 1 รายการ', desc: 'เลือกรับเครื่องดื่มหรือของหวานฟรี', credit: 80, icon: '🥤', stock: 15 },
+  { id: 1003, title: 'ของขวัญพรีเมียมจากร้าน', desc: 'ของที่ระลึกสุดพิเศษสำหรับลูกค้าประจำ', credit: 150, icon: '🎁', stock: 10 }
+];
+const readShop = () => {
+  const list = read('shop');
+  if (!Array.isArray(list) || !list.length) {
+    write('shop', defaultShopItems);
+    return defaultShopItems;
+  }
+  return list;
+};
 
 const getUserBalance = (name) => {
   const norm = String(name || '').trim().toLowerCase();
@@ -26,8 +38,8 @@ const getUserBalance = (name) => {
     .reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const pendingTradeOut = trades.filter(t => (t.fromUser || '').toLowerCase() === norm && t.status === 'pending')
     .reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  const credit = Math.max(0, earned + giftCredits + tradeIn - spent - tradeOut);
-  const availableCredit = Math.max(0, credit - pendingTradeOut);
+  const credit = earned + giftCredits + tradeIn - spent - tradeOut;
+  const availableCredit = credit - pendingTradeOut;
   return { credit, availableCredit, pendingTradeOut, earned, giftCredits, spent, tradeIn, tradeOut };
 };
 
@@ -558,7 +570,7 @@ http.createServer((req, res) => {
     return body(req, (j) => {
       const title = String((j && j.title) || '').trim().slice(0, 100);
       const desc = String((j && j.desc) || '').trim().slice(0, 500);
-      const credit = Math.max(0, Math.floor(Number(j && j.credit) || 0));
+      const credit = Math.floor(Number(j && j.credit) || 0);
       const recipients = Array.isArray(j && j.recipients)
         ? j.recipients.map(a => String(a).slice(0, 60)).slice(0, 200) : [];
       if (!title) return send(res, 400, { error: 'title required' });
@@ -571,11 +583,13 @@ http.createServer((req, res) => {
       // Send chat notification to each recipient
       const msgs = read('messages');
       recipients.forEach(name => {
+        const creditText = credit < 0 ? '(-🪙 ' + Math.abs(credit) + ' เครดิต)' : '(+🪙 ' + credit + ' เครดิต)';
+        const giftPrefix = credit < 0 ? '⚠️ รายการปรับลดเครดิตจากผู้ดูแล: "' : '🎁 คุณได้รับของขวัญจากผู้ดูแล: "';
         msgs.push({
           id: Date.now() + Math.floor(Math.random() * 1000),
           user: name,
           sender: 'admin',
-          text: '🎁 คุณได้รับของขวัญจากผู้ดูแล: "' + title + '" (+🪙 ' + credit + ' เครดิต)' + (desc ? ' - ' + desc : ''),
+          text: giftPrefix + title + '" ' + creditText + (desc ? ' - ' + desc : ''),
           time: new Date().toISOString(),
           read: false
         });

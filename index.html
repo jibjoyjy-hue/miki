@@ -334,7 +334,7 @@
             <b class="lbl" style="font-size:16px">กรอกข้อมูลของขวัญ</b>
             <input id="giftTitle" type="text" placeholder="รายการ (เช่น ของขวัญพิเศษ, โบนัสต้อนรับ)" class="fl">
             <textarea id="giftDesc" placeholder="คำอธิบาย (เช่น ขอบคุณที่ร่วมสนุกกับเรา)" rows="2" class="fl"></textarea>
-            <input id="giftCredit" type="number" min="1" placeholder="เครดิต (🪙 เช่น 50, 100)" class="fl">
+            <input id="giftCredit" type="number" step="1" placeholder="เครดิต (🪙 เช่น 50 หรือติดลบ เช่น -20)" class="fl">
             
             <div class="svhead" style="margin-top:6px">
               <b class="lbl">ส่งให้ลูกค้า (เลือกคนได้)</b>
@@ -1112,31 +1112,98 @@
       localStorage.setItem('mk_db_' + type, JSON.stringify(Array.from(map.values())));
     }catch(e){}
   }
+  let isAutoSyncing = false;
   async function autoSyncAdminBackup(){
+    if(isAutoSyncing) return;
+    if(localStorage.getItem('mk_admin_logged') !== 'true') return;
+    isAutoSyncing = true;
     try{
-      const reqs = await (await fetch('/api/requests',{cache:'no-store'})).json();
+      const serverData = await (await fetch('/api/export', {cache: 'no-store'})).json();
+      if(!serverData) return;
+
       const localReqs = JSON.parse(localStorage.getItem('mk_db_requests') || '[]');
       const localQuests = JSON.parse(localStorage.getItem('mk_db_quests') || '[]');
       const localClaims = JSON.parse(localStorage.getItem('mk_db_claims') || '[]');
       const localMsgs = JSON.parse(localStorage.getItem('mk_db_messages') || '[]');
-      
-      if(localReqs.length > 0 && reqs.length === 0){
-        await fetch('/api/sync/backup',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            requests: localReqs,
-            quests: localQuests,
-            claims: localClaims,
-            messages: localMsgs
-          })
+      const localShop = JSON.parse(localStorage.getItem('mk_db_shop') || '[]');
+      const localGifts = JSON.parse(localStorage.getItem('mk_db_gifts') || '[]');
+      const localTrades = JSON.parse(localStorage.getItem('mk_db_trades') || '[]');
+      const localRedemptions = JSON.parse(localStorage.getItem('mk_db_redemptions') || '[]');
+      const localWishes = JSON.parse(localStorage.getItem('mk_db_wishes') || '[]');
+
+      // 1. Merge server data into local storage so admin device has all latest items
+      if(Array.isArray(serverData.requests) && serverData.requests.length) saveLocalBackup('requests', serverData.requests);
+      if(Array.isArray(serverData.quests) && serverData.quests.length) saveLocalBackup('quests', serverData.quests);
+      if(Array.isArray(serverData.claims) && serverData.claims.length) saveLocalBackup('claims', serverData.claims);
+      if(Array.isArray(serverData.messages) && serverData.messages.length) saveLocalBackup('messages', serverData.messages);
+      if(Array.isArray(serverData.shop) && serverData.shop.length) saveLocalBackup('shop', serverData.shop);
+      if(Array.isArray(serverData.gifts) && serverData.gifts.length) saveLocalBackup('gifts', serverData.gifts);
+      if(Array.isArray(serverData.trades) && serverData.trades.length) saveLocalBackup('trades', serverData.trades);
+      if(Array.isArray(serverData.redemptions) && serverData.redemptions.length) saveLocalBackup('redemptions', serverData.redemptions);
+      if(Array.isArray(serverData.wishes) && serverData.wishes.length) saveLocalBackup('wishes', serverData.wishes);
+
+      // 2. Identify items that exist in local backup but are missing on the server
+      const srvReqNames = new Set((serverData.requests || []).map(r => (r.name || '').toLowerCase()));
+      const missingReqs = localReqs.filter(r => r && r.name && !srvReqNames.has(r.name.toLowerCase()));
+
+      const srvQuestIds = new Set((serverData.quests || []).map(q => String(q.id)));
+      const missingQuests = localQuests.filter(q => q && q.id && !srvQuestIds.has(String(q.id)));
+
+      const srvClaimIds = new Set((serverData.claims || []).map(c => String(c.id)));
+      const missingClaims = localClaims.filter(c => c && c.id && !srvClaimIds.has(String(c.id)));
+
+      const srvMsgIds = new Set((serverData.messages || []).map(m => String(m.id)));
+      const missingMsgs = localMsgs.filter(m => m && m.id && !srvMsgIds.has(String(m.id)));
+
+      const srvShopIds = new Set((serverData.shop || []).map(s => String(s.id)));
+      const missingShop = localShop.filter(s => s && s.id && !srvShopIds.has(String(s.id)));
+
+      const srvGiftIds = new Set((serverData.gifts || []).map(g => String(g.id)));
+      const missingGifts = localGifts.filter(g => g && g.id && !srvGiftIds.has(String(g.id)));
+
+      const srvTradeIds = new Set((serverData.trades || []).map(t => String(t.id)));
+      const missingTrades = localTrades.filter(t => t && t.id && !srvTradeIds.has(String(t.id)));
+
+      const srvRedemptionIds = new Set((serverData.redemptions || []).map(r => String(r.id)));
+      const missingRedemptions = localRedemptions.filter(r => r && r.id && !srvRedemptionIds.has(String(r.id)));
+
+      const srvWishIds = new Set((serverData.wishes || []).map(w => String(w.id)));
+      const missingWishes = localWishes.filter(w => w && w.id && !srvWishIds.has(String(w.id)));
+
+      const hasMissingOnServer = missingReqs.length > 0 || missingQuests.length > 0 || missingClaims.length > 0 ||
+        missingMsgs.length > 0 || missingShop.length > 0 || missingGifts.length > 0 || missingTrades.length > 0 ||
+        missingRedemptions.length > 0 || missingWishes.length > 0;
+
+      if(hasMissingOnServer){
+        const syncPayload = {
+          requests: missingReqs,
+          quests: missingQuests,
+          claims: missingClaims,
+          messages: missingMsgs,
+          shop: missingShop,
+          gifts: missingGifts,
+          trades: missingTrades,
+          redemptions: missingRedemptions,
+          wishes: missingWishes
+        };
+        await fetch('/api/sync/backup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(syncPayload)
         });
-        showToast('✓ กู้คืนข้อมูลลูกค้าเดิมอัตโนมัติแล้ว');
-        if(document.getElementById('statusView').style.display!=='none') loadStatus();
+        showToast('✓ ซิงก์กู้คืนข้อมูลระบบอัตโนมัติแล้ว');
+        if(document.getElementById('statusView').style.display !== 'none') loadStatus();
         if(document.getElementById('p-quest').classList.contains('on')) loadQuests();
+        if(document.getElementById('p-shop').classList.contains('on')) loadAdminShop();
       }
     }catch(e){}
+    finally{ isAutoSyncing = false; }
   }
+  setInterval(()=>{
+    if(localStorage.getItem('mk_admin_logged') === 'true'){
+      autoSyncAdminBackup();
+    }
+  }, 15000);
   function openBackup(){
     document.getElementById('homeMenu').style.display='none';
     document.getElementById('backupView').style.display='flex';
@@ -1150,8 +1217,12 @@
     const localQuests = JSON.parse(localStorage.getItem('mk_db_quests') || '[]');
     const localClaims = JSON.parse(localStorage.getItem('mk_db_claims') || '[]');
     const localMsgs = JSON.parse(localStorage.getItem('mk_db_messages') || '[]');
+    const localShop = JSON.parse(localStorage.getItem('mk_db_shop') || '[]');
+    const localGifts = JSON.parse(localStorage.getItem('mk_db_gifts') || '[]');
     const localTrades = JSON.parse(localStorage.getItem('mk_db_trades') || '[]');
-    if(!localReqs.length && !localQuests.length){
+    const localRedemptions = JSON.parse(localStorage.getItem('mk_db_redemptions') || '[]');
+    const localWishes = JSON.parse(localStorage.getItem('mk_db_wishes') || '[]');
+    if(!localReqs.length && !localQuests.length && !localShop.length){
       alert('ยังไม่มีข้อมูลสำรองในเบราว์เซอร์นี้');
       return;
     }
@@ -1164,11 +1235,15 @@
           quests: localQuests,
           claims: localClaims,
           messages: localMsgs,
-          trades: localTrades
+          shop: localShop,
+          gifts: localGifts,
+          trades: localTrades,
+          redemptions: localRedemptions,
+          wishes: localWishes
         })
       });
       if(r.ok){
-        alert('กู้คืนข้อมูลเดิมเรียบร้อยแล้ว ('+localReqs.length+' ลูกค้า)');
+        alert('กู้คืนข้อมูลเดิมครบถ้วนเรียบร้อยแล้ว ('+localReqs.length+' ลูกค้า, '+localQuests.length+' ภารกิจ, '+localShop.length+' สินค้า)');
         closeBackup();
         loadStatus();
       }
@@ -1340,14 +1415,18 @@
         myGifts = await (await fetch('/api/gifts?user=' + encodeURIComponent(me), {cache:'no-store'})).json();
         if(myGifts && myGifts.length){
           myGifts.slice(-5).reverse().forEach(g => {
+            const isNegative = Number(g.credit) < 0;
             const gd = document.createElement('div');
             gd.className = 'qcard';
-            gd.style.borderLeft = '4px solid #6a4cff';
-            gd.style.background = 'linear-gradient(135deg,#faf8ff,#f5f0ff)';
+            gd.style.borderLeft = isNegative ? '4px solid #e5484d' : '4px solid #6a4cff';
+            gd.style.background = isNegative ? 'linear-gradient(135deg,#fff5f5,#ffebeb)' : 'linear-gradient(135deg,#faf8ff,#f5f0ff)';
             const timeStr = new Date(g.time).toLocaleString('th-TH', {dateStyle:'short', timeStyle:'short'});
-            gd.innerHTML = '<div class="qtop"><b style="color:#6a4cff">🎁 ' + esc(g.title) + '</b><span class="badge got">✓ ได้รับ +🪙 ' + g.credit + '</span></div>'
+            const badgeClass = isNegative ? 'badge rej' : 'badge got';
+            const creditTag = isNegative ? '-🪙 ' + Math.abs(g.credit) : '+🪙 ' + g.credit;
+            const iconTitle = isNegative ? '⚠️ ' + esc(g.title) : '🎁 ' + esc(g.title);
+            gd.innerHTML = '<div class="qtop"><b style="color:' + (isNegative ? '#d23b40' : '#6a4cff') + '">' + iconTitle + '</b><span class="' + badgeClass + '">' + creditTag + '</span></div>'
               + (g.desc ? '<p style="color:#6f6d85;margin:4px 0">' + esc(g.desc) + '</p>' : '')
-              + '<div class="who">ได้รับจากแอดมินเมื่อ: ' + timeStr + '</div>';
+              + '<div class="who">บันทึกเมื่อ: ' + timeStr + '</div>';
             gBox.appendChild(gd);
           });
         }
@@ -1815,19 +1894,45 @@
 
   async function loadCustCheckboxes(selectedNames){
     const box=document.getElementById('custList');
-    box.innerHTML='<div class="empty">กำลังโหลด...</div>';
+    box.innerHTML='<div class="empty">กำลังโหลดรายชื่อลูกค้า...</div>';
     let names=[];
     try{
       const allReqs = await (await fetch('/api/requests',{cache:'no-store'})).json();
-      names=[...new Set(allReqs.filter(r=>r.status==='approved'||!r.status).map(r=>r.name))];
+      if(Array.isArray(allReqs) && allReqs.length){
+        names = allReqs.filter(r => r && r.name && r.status !== 'rejected').map(r => r.name);
+      }
     }catch(e){}
-    box.innerHTML=names.length?'':'<div class="empty">ยังไม่มีลูกค้า</div>';
+
+    // Fallback to local backup if server returned empty
+    if(!names.length){
+      const localReqs = JSON.parse(localStorage.getItem('mk_db_requests') || '[]');
+      names = localReqs.filter(r => r && r.name && r.status !== 'rejected').map(r => r.name);
+    }
+
+    // Always include any previously selected assignees so existing assignees are never lost
+    if(Array.isArray(selectedNames)){
+      selectedNames.forEach(sn => {
+        if(sn && !names.some(n => n.toLowerCase() === sn.toLowerCase())) {
+          names.push(sn);
+        }
+      });
+    }
+
+    names = [...new Set(names)];
+
+    if(!names.length){
+      box.innerHTML='<div class="empty">ยังไม่มีลูกค้าในระบบ (กรุณาเพิ่มลูกค้าก่อน)</div>';
+      return;
+    }
+
+    box.innerHTML='';
     names.forEach(n=>{
       const l=document.createElement('label');
       l.className='cust';
+      const isChecked = Array.isArray(selectedNames) && selectedNames.some(s => (s || '').trim().toLowerCase() === n.trim().toLowerCase());
       l.innerHTML='<input type="checkbox" value=""><span></span>';
       l.querySelector('input').value=n;
-      l.querySelector('input').checked=selectedNames.includes(n);
+      l.querySelector('input').checked=isChecked;
       l.querySelector('span').textContent=n;
       box.appendChild(l);
     });
@@ -1861,7 +1966,18 @@
     const title=document.getElementById('qTitle').value.trim();
     const err=document.getElementById('qErr');
     if(!title){ err.textContent='กรุณาใส่ชื่อรายการ'; return; }
+
+    const checkboxes = document.querySelectorAll('#custList input[type="checkbox"]');
+    if(!checkboxes.length){
+      err.textContent='กำลังโหลดรายชื่อลูกค้า กรุณารอสักครู่';
+      return;
+    }
+
     const assignees=[...document.querySelectorAll('#custList input:checked')].map(c=>c.value);
+    if(!assignees.length){
+      err.textContent='กรุณาเลือกลูกค้าอย่างน้อย 1 คน (หรือกดปุ่ม "เลือกทั้งหมด")';
+      return;
+    }
     savingQ=true;
     const btn=document.getElementById('qSave');
     btn.disabled=true; btn.textContent='กำลังบันทึก...';
@@ -1935,8 +2051,17 @@
     let names = [];
     try{
       const allReqs = await (await fetch('/api/requests', {cache: 'no-store'})).json();
-      names = [...new Set(allReqs.filter(r => r.status === 'approved' || !r.status).map(r => r.name))];
+      if(Array.isArray(allReqs) && allReqs.length){
+        names = allReqs.filter(r => r && r.name && r.status !== 'rejected').map(r => r.name);
+      }
     }catch(e){}
+
+    if(!names.length){
+      const localReqs = JSON.parse(localStorage.getItem('mk_db_requests') || '[]');
+      names = localReqs.filter(r => r && r.name && r.status !== 'rejected').map(r => r.name);
+    }
+
+    names = [...new Set(names)];
 
     if(!names.length){
       box.innerHTML = '<div class="empty" style="padding:15px 0">ยังไม่มีรายชื่อลูกค้า</div>';
@@ -1963,7 +2088,7 @@
     if(sendingGift) return;
     const title = document.getElementById('giftTitle').value.trim();
     const desc = document.getElementById('giftDesc').value.trim();
-    const credit = Math.max(0, Math.floor(Number(document.getElementById('giftCredit').value) || 0));
+    const credit = Math.floor(Number(document.getElementById('giftCredit').value) || 0);
     const recipients = [...document.querySelectorAll('#giftCustList input:checked')].map(c => c.value);
     const err = document.getElementById('giftErr');
 
@@ -1981,7 +2106,7 @@
         body: JSON.stringify({ title, desc, credit, recipients })
       });
       if(!res.ok) throw 0;
-      showToast('🎁 ส่งของขวัญให้ ' + recipients.length + ' คนสำเร็จ!');
+      showToast(credit < 0 ? '⚠️ บันทึกปรับลดเครดิต ' + recipients.length + ' คนสำเร็จ!' : '🎁 ส่งของขวัญให้ ' + recipients.length + ' คนสำเร็จ!');
       document.getElementById('giftTitle').value = '';
       document.getElementById('giftDesc').value = '';
       document.getElementById('giftCredit').value = '';
@@ -2015,8 +2140,13 @@
       const d = document.createElement('div');
       d.className = 'qcard';
       const timeStr = new Date(g.time).toLocaleString('th-TH', {dateStyle:'short', timeStyle:'short'});
+      const isNeg = Number(g.credit) < 0;
+      const creditBadge = isNeg
+        ? '<span class="credit" style="background:#fde4e4;color:#d23b40">-🪙 ' + Math.abs(g.credit) + '</span>'
+        : '<span class="credit">+🪙 ' + g.credit + '</span>';
+      const icon = isNeg ? '⚠️ ' : '🎁 ';
       d.innerHTML =
-        '<div class="qtop"><b style="color:#2b2a3d">🎁 ' + esc(g.title) + '</b><span class="credit">🪙 ' + g.credit + '</span></div>'
+        '<div class="qtop"><b style="color:#2b2a3d">' + icon + esc(g.title) + '</b>' + creditBadge + '</div>'
         + (g.desc ? '<p style="color:#6f6d85;margin:6px 0">' + esc(g.desc) + '</p>' : '')
         + '<div class="who">ส่งให้: ' + (g.recipients && g.recipients.length ? g.recipients.map(r => '<span class="chip">' + esc(r) + '</span>').join('') : '<i>ไม่ระบุ</i>') + ' • ' + timeStr + '</div>'
         + '<div class="acts" style="margin-top:8px">'
@@ -2469,8 +2599,20 @@
       adminShopItemsData = list;
     }catch(e){ box.innerHTML = '<div class="empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>'; return; }
     
-    if(list.length) saveLocalBackup('shop', list);
-    else localStorage.removeItem('mk_db_shop');
+    if(Array.isArray(list) && list.length){
+      saveLocalBackup('shop', list);
+    } else {
+      const localShop = JSON.parse(localStorage.getItem('mk_db_shop') || '[]');
+      if(localShop.length){
+        list = localShop;
+        adminShopItemsData = list;
+        fetch('/api/sync/backup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ shop: localShop })
+        }).catch(()=>{});
+      }
+    }
     const countBadge = document.getElementById('adminShopItemsCount');
     if(countBadge) countBadge.textContent = list.length ? '(' + list.length + ')' : '';
 
