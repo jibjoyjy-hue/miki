@@ -152,6 +152,37 @@
   .modal-card{background:#fff;border-radius:24px;padding:24px 20px;width:100%;max-width:320px;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,.25);animation:in .25s ease}
   .modal-icon{width:64px;height:64px;border-radius:22px;background:linear-gradient(135deg,#f4eeff,#e7dcff);display:grid;place-items:center;font-size:32px;margin:0 auto 12px}
   .modal-cost-box{background:#faf8ff;border:1px solid #e9e2f8;border-radius:16px;padding:10px 14px;margin-top:10px;font-size:13px;display:flex;flex-direction:column;gap:6px;text-align:left}
+
+  /* Arcade & Mini Games */
+  .arcade-card{background:#fff;border-radius:20px;padding:14px 16px;box-shadow:0 4px 16px rgba(80,50,180,.09);display:flex;align-items:center;gap:14px;cursor:pointer;border:1px solid #f0ecfa;transition:.2s}
+  .arcade-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(80,50,180,.15)}
+  .arcade-card:active{transform:scale(.98)}
+  .arcade-card-icon{width:54px;height:54px;border-radius:18px;display:grid;place-items:center;font-size:30px;color:#fff;flex:none;box-shadow:0 6px 14px rgba(0,0,0,.12)}
+  .arcade-card-info{flex:1;min-width:0;text-align:left}
+  .arcade-card-info b{font-size:16px;color:#2b2a3d;display:block}
+  .arcade-card-info p{font-size:12px;color:#6f6d85;margin:3px 0 0;line-height:1.3}
+  .arcade-tag-row{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+  .arcade-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;color:#fff}
+  .arcade-badge.red{background:linear-gradient(135deg,#ff5858,#f857a6)}
+  .arcade-badge.blue{background:linear-gradient(135deg,#4facfe,#00f2fe)}
+  .arcade-badge.purple{background:linear-gradient(135deg,#6a4cff,#a46bff)}
+  .arcade-hs{font-size:11px;font-weight:700;color:#c58a00;background:#fff8e6;padding:2px 6px;border-radius:8px}
+  .arcade-play-btn{width:36px;height:36px;border-radius:50%;background:#f5f0ff;display:grid;place-items:center;font-size:15px;color:#6a4cff;flex:none}
+  .arcade-stage-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .arcade-hud{display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:14px;padding:8px 14px;box-shadow:0 2px 10px rgba(80,50,180,.08);margin-bottom:8px;font-size:12px;font-weight:700}
+  .hud-item{display:flex;align-items:center;gap:4px}
+  .canvas-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(20,18,35,.78);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px;border-radius:20px}
+  .overlay-card{background:#fff;border-radius:24px;padding:22px 18px;width:100%;max-width:290px;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,.3);animation:in .25s ease}
+  
+  /* Whack Grid */
+  .whack-board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:320px;padding:14px;background:linear-gradient(180deg,#6b48ff,#4a28db);border-radius:24px;box-shadow:0 12px 28px rgba(74,40,219,.35)}
+  .whack-hole-wrap{display:flex;flex-direction:column;align-items:center;height:95px;position:relative;overflow:hidden;border-radius:18px;background:rgba(20,15,55,.6);box-shadow:inset 0 6px 12px rgba(0,0,0,.6);touch-action:manipulation}
+  .whack-hole-rim{position:absolute;bottom:0;left:0;right:0;height:28px;background:linear-gradient(180deg,#5530b8,#3d2088);border-radius:0 0 18px 18px;border-top:3px solid #7c54f5;z-index:5;pointer-events:none}
+  .whack-target{position:absolute;bottom:4px;width:64px;height:64px;display:grid;place-items:center;font-size:38px;user-select:none;cursor:pointer;transform:translateY(85px);transition:transform .12s cubic-bezier(.3,1.5,.5,1);z-index:3}
+  .whack-target.up{transform:translateY(0)}
+  .whack-target.hit{transform:translateY(12px) scale(.85);filter:brightness(1.5)}
+  .whack-pop-text{position:absolute;top:20px;font-size:15px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.7);pointer-events:none;animation:floatUp .6s forwards;z-index:10}
+  @keyframes floatUp{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-35px) scale(1.3)}}
 </style>
 </head>
 <body>
@@ -193,6 +224,7 @@
           <button class="menu add" onclick="addCustomer()"><div class="mic">➕</div><div><b>เพิ่มลูกค้า</b><small>บันทึกลูกค้าใหม่</small></div></button>
           <button class="menu status" onclick="openStatus()"><div class="mic">📊</div><div style="flex:1"><b>ดูสถานะ / คำขอ</b><small>ตรวจสอบลูกค้า & แชทคำขอ</small></div><span id="adminChatBadge" class="unread-pill" style="display:none">0</span></button>
           <button class="menu" style="background:linear-gradient(135deg,#4a90e2,#63b3ed);box-shadow:0 12px 24px rgba(74,144,226,.35)" onclick="openBackup()"><div class="mic">💾</div><div><b>สำรอง & กู้คืนข้อมูล</b><small>ป้องกันข้อมูลหายหลังอัปเดตแอป</small></div></button>
+          <button class="menu" style="background:linear-gradient(135deg,#ff9a44,#fc6076);box-shadow:0 12px 24px rgba(252,96,118,.35)" onclick="openAdminGame()"><div class="mic">🎮</div><div><b>มินิเกมคลายเครียด</b><small>ทดลองเล่นเกมทั้ง 3 เกม</small></div></button>
           <button class="menu" style="background:linear-gradient(135deg,#f43f5e,#fb7185);box-shadow:0 12px 24px rgba(244,63,94,.3)" onclick="adminLogout()"><div class="mic">🚪</div><div><b>ออกจากระบบแอดมิน</b><small>กลับไปหน้าเลือกลูกค้าหรือแอดมิน</small></div></button>
         </div>
         <div id="backupView" class="hbox" style="display:none">
@@ -558,12 +590,134 @@
           <div id="custShopHistoryList" class="shop-list" style="display:none"></div>
         </div>
       </div>
+      <div class="page" id="c-game" style="padding:46px 12px 10px;justify-content:flex-start">
+        <div id="arcadeHub" class="hbox" style="width:100%;max-height:640px;overflow-y:auto;padding-bottom:12px">
+          <!-- Back to Admin button if opened by admin -->
+          <div id="gameAdminBackRow" style="display:none;margin-bottom:-4px">
+            <button class="back" onclick="returnToAdminFromGame()" style="font-weight:700;display:flex;align-items:center;gap:6px">← กลับหน้าหลักแอดมิน</button>
+          </div>
+
+          <div class="svhead" style="align-items:center">
+            <div>
+              <small style="color:#ff6b9a;font-weight:700;font-size:11px;letter-spacing:1px">ARCADE ZONE ⚡</small>
+              <h2 style="font-size:22px;text-align:left;color:#2b2a3d;margin-top:2px">มินิเกมคลายเครียด</h2>
+            </div>
+            <button class="mini" id="soundToggleBtn" onclick="toggleArcadeSound()" style="background:#fff;border:1px solid #e3dcff;font-size:16px;padding:6px 10px">🔊</button>
+          </div>
+
+          <!-- Game 1 Card: Drop Catch & Dodge -->
+          <div class="arcade-card" onclick="startCatchGame()">
+            <div class="arcade-card-icon" style="background:linear-gradient(135deg,#ffedbc,#ed4264)">🧺</div>
+            <div class="arcade-card-info">
+              <div class="arcade-tag-row">
+                <span class="arcade-badge red">รับของ & หลบระเบิด</span>
+                <span class="arcade-hs" id="hsCatchBadge">🏆 0</span>
+              </div>
+              <b>Drop & Catch</b>
+              <p>ลากตะกร้ารับเหรียญและกล่องของขวัญ ระวังระเบิด!</p>
+            </div>
+            <div class="arcade-play-btn">▶️</div>
+          </div>
+
+          <!-- Game 2 Card: Flappy Miki -->
+          <div class="arcade-card" onclick="startFlappyGame()">
+            <div class="arcade-card-icon" style="background:linear-gradient(135deg,#70e1f5,#ffd194)">🚀</div>
+            <div class="arcade-card-info">
+              <div class="arcade-tag-row">
+                <span class="arcade-badge blue">บินเก็บเหรียญ หลบเสา</span>
+                <span class="arcade-hs" id="hsFlappyBadge">🏆 0</span>
+              </div>
+              <b>Flappy Miki</b>
+              <p>แตะหน้าจอเพื่อบินรอดช่องเสาและเก็บเหรียญทอง</p>
+            </div>
+            <div class="arcade-play-btn">▶️</div>
+          </div>
+
+          <!-- Game 3 Card: Whack Frenzy -->
+          <div class="arcade-card" onclick="startWhackGame()">
+            <div class="arcade-card-icon" style="background:linear-gradient(135deg,#f857a6,#ff5858)">🔨</div>
+            <div class="arcade-card-info">
+              <div class="arcade-tag-row">
+                <span class="arcade-badge purple">ทุบไวแสง คอมโบ x5</span>
+                <span class="arcade-hs" id="hsWhackBadge">🏆 0</span>
+              </div>
+              <b>Whack Frenzy</b>
+              <p>จิ้มทุบตัวตุ่นและเหรียญให้ทัน 30 วิ ทำคอมโบไฟลุก!</p>
+            </div>
+            <div class="arcade-play-btn">▶️</div>
+          </div>
+
+          <div style="text-align:center;color:#9a98ad;font-size:12px;margin-top:6px">
+            ✨ เล่นฟรีได้ตลอดเวลาไม่จำกัดรอบ บันทึกสถิติลงเครื่องอัตโนมัติ
+          </div>
+        </div>
+
+        <!-- Single Active Game Stage Wrapper -->
+        <div id="arcadeStage" style="display:none;flex-direction:column;width:100%;height:100%;position:relative">
+          <div class="arcade-stage-top">
+            <button class="back" onclick="exitToGameHub()" style="font-weight:700">← เลือกเกม</button>
+            <h3 id="stageGameTitle" style="font-size:15px;color:#2b2a3d;margin:0">เกม</h3>
+            <button class="mini" id="stageSoundBtn" onclick="toggleArcadeSound()" style="background:#fff;border:1px solid #e3dcff;font-size:14px;padding:4px 8px">🔊</button>
+          </div>
+
+          <div class="arcade-hud">
+            <div class="hud-item"><span id="hudLabel1">คะแนน:</span> <b id="hudVal1" style="color:#6a4cff">0</b></div>
+            <div class="hud-item"><span id="hudLabel2">ชีวิต:</span> <b id="hudVal2">❤️❤️❤️</b></div>
+            <div class="hud-item"><span id="hudLabel3">สูงสุด:</span> <b id="hudVal3" style="color:#c58a00">0</b></div>
+          </div>
+
+          <!-- Canvas container for Game 1 & 2 -->
+          <div id="canvasWrap" style="position:relative;width:100%;flex:1;display:flex;justify-content:center;align-items:center;overflow:hidden;border-radius:20px;background:#1a1929;box-shadow:0 8px 24px rgba(0,0,0,.18)">
+            <canvas id="gameCanvas" width="345" height="470" style="display:block;width:100%;height:100%;touch-action:none"></canvas>
+            
+            <!-- In-game start / overlay -->
+            <div id="canvasOverlay" class="canvas-overlay" style="display:none">
+              <div class="overlay-card">
+                <div id="overlayIcon" style="font-size:42px;margin-bottom:6px">🎮</div>
+                <h2 id="overlayTitle" style="font-size:20px;color:#2b2a3d;margin-bottom:4px">เริ่มเกม</h2>
+                <p id="overlaySub" style="color:#6f6d85;font-size:13px;margin-bottom:14px">คำอธิบาย</p>
+                <div id="overlayScoreBox" style="display:none;background:#f5f0ff;border-radius:14px;padding:10px;margin-bottom:14px">
+                  <div style="font-size:12px;color:#8a88a0">คะแนนที่ได้</div>
+                  <div id="overlayFinalScore" style="font-size:28px;font-weight:800;color:#6a4cff">0</div>
+                  <div id="overlayRecordNotice" style="font-size:11px;color:#22c58b;font-weight:700;margin-top:2px;display:none">🎉 ทำลายสถิติสูงสุดใหม่!</div>
+                </div>
+                <button class="btn" id="overlayActionBtn" onclick="onOverlayAction()" style="width:100%;padding:14px">▶️ เริ่มเล่น</button>
+                <button class="back" onclick="exitToGameHub()" style="margin-top:8px">กลับหน้าเลือกเกม</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- HTML/CSS Container for Game 3: Whack Frenzy -->
+          <div id="whackStageWrap" style="display:none;flex-direction:column;width:100%;flex:1;align-items:center;justify-content:center;position:relative">
+            <!-- Whack 3x3 Grid -->
+            <div class="whack-board" id="whackBoard"></div>
+            
+            <!-- Whack Start / Over Overlay -->
+            <div id="whackOverlay" class="canvas-overlay" style="display:none">
+              <div class="overlay-card">
+                <div id="whackOverlayIcon" style="font-size:42px;margin-bottom:6px">🔨</div>
+                <h2 id="whackOverlayTitle" style="font-size:20px;color:#2b2a3d;margin-bottom:4px">Whack Frenzy</h2>
+                <p id="whackOverlaySub" style="color:#6f6d85;font-size:13px;margin-bottom:14px">จิ้มทุบตัวตุ่น เหรียญ และมงกุฎทอง! ระวังระเบิด!</p>
+                <div id="whackScoreBox" style="display:none;background:#f5f0ff;border-radius:14px;padding:10px;margin-bottom:14px">
+                  <div style="font-size:12px;color:#8a88a0">คะแนนทั้งหมด</div>
+                  <div id="whackFinalScore" style="font-size:28px;font-weight:800;color:#6a4cff">0</div>
+                  <div id="whackFinalCombo" style="font-size:12px;color:#ff5858;font-weight:700">คอมโบสูงสุด: x1</div>
+                  <div id="whackRecordNotice" style="font-size:11px;color:#22c58b;font-weight:700;margin-top:2px;display:none">🎉 ทำลายสถิติสูงสุดใหม่!</div>
+                </div>
+                <button class="btn" id="whackActionBtn" onclick="onWhackOverlayAction()" style="width:100%;padding:14px">▶️ เริ่มทุบเลย (30 วิ)</button>
+                <button class="back" onclick="exitToGameHub()" style="margin-top:8px">กลับหน้าเลือกเกม</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="tabbar">
       <button class="on" data-tab="home" onclick="ctab('home')"><i>🏠</i>Home</button>
       <button data-tab="chat" onclick="ctab('chat')"><i>💬</i>Chat</button>
       <button data-tab="trade" onclick="ctab('trade')"><i>🔄</i>Trade</button>
       <button data-tab="shop" onclick="ctab('shop')"><i>🛍️</i>Shop</button>
+      <button data-tab="game" onclick="ctab('game')"><i>🎮</i>Game</button>
     </div>
   </div>
 
@@ -601,6 +755,11 @@
 </div>
 <script>
   function show(id){
+    if(window.stopAllArcadeGames && id !== 'custMain') stopAllArcadeGames();
+    if(id === 'userPage'){
+      const backRow = document.getElementById('gameAdminBackRow');
+      if(backRow) backRow.style.display = 'none';
+    }
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     document.getElementById('err').textContent='';
@@ -1489,9 +1648,11 @@
   let custChatTimer = null;
   function ctab(name){
     clearInterval(custChatTimer);
+    if(window.stopAllArcadeGames && name !== 'game') stopAllArcadeGames();
     if(name==='home') loadMyQuests();
     if(name==='shop') loadCustShop();
     if(name==='trade') loadCustTrade();
+    if(name==='game') loadArcadeHighScores();
     if(name==='chat'){
       loadCustChat();
       custChatTimer=setInterval(loadCustChat,2500);
@@ -3016,6 +3177,950 @@
       btn.disabled = false;
       btn.textContent = 'ส่งคำขอ';
     }
+  }
+
+  // ==========================================
+  // --- MIKI ARCADE & ACTION MINIGAMES SYSTEM ---
+  // ==========================================
+  let arcadeAudioCtx = null;
+  let arcadeSoundOn = localStorage.getItem('mk_arcade_sound') !== 'false';
+  let currentArcadeGame = null;
+
+  function initArcadeAudio() {
+    if (!arcadeAudioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) arcadeAudioCtx = new AC();
+    }
+    if (arcadeAudioCtx && arcadeAudioCtx.state === 'suspended') {
+      arcadeAudioCtx.resume();
+    }
+  }
+
+  function toggleArcadeSound() {
+    arcadeSoundOn = !arcadeSoundOn;
+    localStorage.setItem('mk_arcade_sound', arcadeSoundOn);
+    const icon = arcadeSoundOn ? '🔊' : '🔇';
+    const btn1 = document.getElementById('soundToggleBtn');
+    const btn2 = document.getElementById('stageSoundBtn');
+    if (btn1) btn1.textContent = icon;
+    if (btn2) btn2.textContent = icon;
+  }
+
+  function playArcadeSound(type) {
+    if (!arcadeSoundOn) return;
+    try {
+      initArcadeAudio();
+      if (!arcadeAudioCtx) return;
+      const ctx = arcadeAudioCtx;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === 'coin') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(987.77, now);
+        osc.frequency.setValueAtTime(1318.51, now + 0.08);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      } else if (type === 'jump') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(560, now + 0.12);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        osc.start(now);
+        osc.stop(now + 0.14);
+      } else if (type === 'whack') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(360, now);
+        osc.frequency.exponentialRampToValueAtTime(180, now + 0.08);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } else if (type === 'bomb') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.28);
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        osc.start(now);
+        osc.stop(now + 0.28);
+      } else if (type === 'combo') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.06);
+        osc.frequency.setValueAtTime(783.99, now + 0.12);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+        osc.start(now);
+        osc.stop(now + 0.26);
+      } else if (type === 'over') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.setValueAtTime(240, now + 0.15);
+        osc.frequency.setValueAtTime(160, now + 0.3);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        osc.start(now);
+        osc.stop(now + 0.45);
+      } else if (type === 'win') {
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.frequency.value = f;
+          g.gain.setValueAtTime(0.15, now + i * 0.08);
+          g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.22);
+          o.start(now + i * 0.08);
+          o.stop(now + i * 0.08 + 0.22);
+        });
+      }
+    } catch (e) {}
+  }
+
+  function loadArcadeHighScores() {
+    const hsCatch = parseInt(localStorage.getItem('mk_hs_catch') || '0', 10);
+    const hsFlappy = parseInt(localStorage.getItem('mk_hs_flappy') || '0', 10);
+    const hsWhack = parseInt(localStorage.getItem('mk_hs_whack') || '0', 10);
+    const b1 = document.getElementById('hsCatchBadge');
+    const b2 = document.getElementById('hsFlappyBadge');
+    const b3 = document.getElementById('hsWhackBadge');
+    if (b1) b1.textContent = '🏆 ' + hsCatch;
+    if (b2) b2.textContent = '🏆 ' + hsFlappy;
+    if (b3) b3.textContent = '🏆 ' + hsWhack;
+    
+    const icon = arcadeSoundOn ? '🔊' : '🔇';
+    const btn1 = document.getElementById('soundToggleBtn');
+    const btn2 = document.getElementById('stageSoundBtn');
+    if (btn1) btn1.textContent = icon;
+    if (btn2) btn2.textContent = icon;
+  }
+
+  function saveArcadeHighScore(game, score) {
+    const key = 'mk_hs_' + game;
+    const old = parseInt(localStorage.getItem(key) || '0', 10);
+    if (score > old) {
+      localStorage.setItem(key, score);
+      loadArcadeHighScores();
+      return true;
+    }
+    return false;
+  }
+
+  function openAdminGame(){
+    const backRow = document.getElementById('gameAdminBackRow');
+    if(backRow) backRow.style.display = 'block';
+    show('custMain');
+    ctab('game');
+  }
+
+  function returnToAdminFromGame(){
+    stopAllArcadeGames();
+    show('main');
+    tab('home');
+  }
+
+  function stopAllArcadeGames() {
+    stopCatchGame();
+    stopFlappyGame();
+    stopWhackGame();
+    currentArcadeGame = null;
+  }
+
+  function exitToGameHub() {
+    stopAllArcadeGames();
+    document.getElementById('arcadeStage').style.display = 'none';
+    document.getElementById('arcadeHub').style.display = 'flex';
+    loadArcadeHighScores();
+  }
+
+  function onOverlayAction() {
+    if (currentArcadeGame === 'catch') initCatchGame();
+    else if (currentArcadeGame === 'flappy') initFlappyGame();
+  }
+
+  function onWhackOverlayAction() {
+    initWhackGame();
+  }
+
+  // ----------------------------------------------------
+  // GAME 1: 🧺 DROP CATCH & DODGE (รับของ หลบระเบิด)
+  // ----------------------------------------------------
+  let catchAnimId = null;
+  let catchSpawnTimer = null;
+  let catchScore = 0;
+  let catchLives = 3;
+  let catchItems = [];
+  let catchFloats = [];
+  let catchShake = 0;
+  let catchBasketX = 140;
+  const catchBasketW = 66;
+  const catchBasketH = 24;
+  let catchKeyLeft = false;
+  let catchKeyRight = false;
+  let catchListenersBound = false;
+
+  function bindCatchControls() {
+    if (catchListenersBound) return;
+    catchListenersBound = true;
+    const canvas = document.getElementById('gameCanvas');
+
+    const handlePointer = (e) => {
+      if (currentArcadeGame !== 'catch') return;
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches && e.touches.length ? e.touches[0].clientX : e.clientX;
+      if (clientX !== undefined) {
+        const scaleX = canvas.width / rect.width;
+        const x = (clientX - rect.left) * scaleX;
+        catchBasketX = Math.max(0, Math.min(canvas.width - catchBasketW, x - catchBasketW / 2));
+      }
+    };
+
+    canvas.addEventListener('pointerdown', handlePointer, {passive: false});
+    canvas.addEventListener('pointermove', (e) => {
+      if (e.buttons > 0 || e.pointerType === 'touch') handlePointer(e);
+    }, {passive: false});
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      handlePointer(e);
+    }, {passive: false});
+
+    window.addEventListener('keydown', (e) => {
+      if (currentArcadeGame === 'catch') {
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') catchKeyLeft = true;
+        if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') catchKeyRight = true;
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') catchKeyLeft = false;
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') catchKeyRight = false;
+    });
+  }
+
+  function startCatchGame() {
+    stopAllArcadeGames();
+    currentArcadeGame = 'catch';
+    document.getElementById('arcadeHub').style.display = 'none';
+    document.getElementById('arcadeStage').style.display = 'flex';
+    document.getElementById('canvasWrap').style.display = 'flex';
+    document.getElementById('whackStageWrap').style.display = 'none';
+
+    document.getElementById('stageGameTitle').textContent = '🧺 Drop & Catch';
+    document.getElementById('hudLabel1').textContent = 'คะแนน:';
+    document.getElementById('hudVal1').textContent = '0';
+    document.getElementById('hudLabel2').textContent = 'ชีวิต:';
+    document.getElementById('hudVal2').textContent = '❤️❤️❤️';
+    document.getElementById('hudLabel3').textContent = 'สูงสุด:';
+    document.getElementById('hudVal3').textContent = localStorage.getItem('mk_hs_catch') || '0';
+
+    const overlay = document.getElementById('canvasOverlay');
+    overlay.style.display = 'flex';
+    document.getElementById('overlayIcon').textContent = '🧺';
+    document.getElementById('overlayTitle').textContent = 'Drop & Catch';
+    document.getElementById('overlaySub').textContent = 'ลากตะกร้ารับเหรียญ 🪙 และของขวัญ 🎁 โยกหลบระเบิด 💣 และสายฟ้า ⚡';
+    document.getElementById('overlayScoreBox').style.display = 'none';
+    document.getElementById('overlayActionBtn').textContent = '▶️ เริ่มเล่นเลย';
+
+    bindCatchControls();
+    drawCatchIdle();
+  }
+
+  function initCatchGame() {
+    document.getElementById('canvasOverlay').style.display = 'none';
+    catchScore = 0;
+    catchLives = 3;
+    catchItems = [];
+    catchFloats = [];
+    catchShake = 0;
+    catchBasketX = (345 - catchBasketW) / 2;
+    document.getElementById('hudVal1').textContent = '0';
+    document.getElementById('hudVal2').textContent = '❤️❤️❤️';
+
+    clearInterval(catchSpawnTimer);
+    catchSpawnTimer = setInterval(spawnCatchItem, 650);
+
+    cancelAnimationFrame(catchAnimId);
+    loopCatchGame();
+  }
+
+  function stopCatchGame() {
+    cancelAnimationFrame(catchAnimId);
+    clearInterval(catchSpawnTimer);
+  }
+
+  function spawnCatchItem() {
+    if (currentArcadeGame !== 'catch' || catchLives <= 0) return;
+    const r = Math.random();
+    let type = 'coin';
+    let pts = 10;
+    let emoji = '🪙';
+    let speed = 3.2;
+
+    if (r < 0.40) {
+      type = 'coin'; pts = 10; emoji = '🪙'; speed = 3.2;
+    } else if (r < 0.60) {
+      type = 'diamond'; pts = 25; emoji = '💎'; speed = 3.6;
+    } else if (r < 0.72) {
+      type = 'gift'; pts = 50; emoji = '🎁'; speed = 4.0;
+    } else if (r < 0.90) {
+      type = 'bomb'; pts = 0; emoji = '💣'; speed = 3.0;
+    } else {
+      type = 'lightning'; pts = 0; emoji = '⚡'; speed = 5.2;
+    }
+
+    const speedBonus = Math.min(3.8, catchScore * 0.005);
+    catchItems.push({
+      x: 25 + Math.random() * (345 - 50),
+      y: -24,
+      radius: 16,
+      type,
+      pts,
+      emoji,
+      speed: speed + speedBonus
+    });
+  }
+
+  function loopCatchGame() {
+    if (currentArcadeGame !== 'catch') return;
+    updateCatchGame();
+    drawCatchGame();
+    if (catchLives > 0) {
+      catchAnimId = requestAnimationFrame(loopCatchGame);
+    } else {
+      endCatchGame();
+    }
+  }
+
+  function updateCatchGame() {
+    if (catchKeyLeft) catchBasketX = Math.max(0, catchBasketX - 6);
+    if (catchKeyRight) catchBasketX = Math.min(345 - catchBasketW, catchBasketX + 6);
+    if (catchShake > 0) catchShake--;
+
+    const basketY = 470 - 45;
+    for (let i = catchItems.length - 1; i >= 0; i--) {
+      const it = catchItems[i];
+      it.y += it.speed;
+
+      // Check catch
+      if (it.y + it.radius >= basketY && it.y - it.radius <= basketY + catchBasketH) {
+        if (it.x + it.radius >= catchBasketX && it.x - it.radius <= catchBasketX + catchBasketW) {
+          catchItems.splice(i, 1);
+          if (it.type === 'bomb' || it.type === 'lightning') {
+            catchLives--;
+            catchShake = 14;
+            playArcadeSound('bomb');
+            catchFloats.push({text: '💥 -1 ❤️', x: it.x, y: basketY - 10, color: '#ff4d4d', life: 30});
+            document.getElementById('hudVal2').textContent = '❤️'.repeat(Math.max(0, catchLives)) + '🖤'.repeat(Math.max(0, 3 - catchLives));
+          } else {
+            catchScore += it.pts;
+            playArcadeSound('coin');
+            catchFloats.push({text: '+' + it.pts, x: it.x, y: basketY - 10, color: '#ffd166', life: 25});
+            document.getElementById('hudVal1').textContent = catchScore;
+          }
+          continue;
+        }
+      }
+
+      // Check out of bounds
+      if (it.y > 470 + 30) {
+        catchItems.splice(i, 1);
+      }
+    }
+
+    // Update floats
+    for (let i = catchFloats.length - 1; i >= 0; i--) {
+      catchFloats[i].y -= 1.2;
+      catchFloats[i].life--;
+      if (catchFloats[i].life <= 0) catchFloats.splice(i, 1);
+    }
+  }
+
+  function drawCatchIdle() {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#1c1635'); grad.addColorStop(1, '#3b2064');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawCatchBasket(ctx, (345 - catchBasketW) / 2, 470 - 45);
+  }
+
+  function drawCatchBasket(ctx, x, y) {
+    ctx.save();
+    ctx.fillStyle = '#ff758c';
+    ctx.beginPath();
+    ctx.roundRect(x, y, catchBasketW, catchBasketH, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🧺', x + catchBasketW / 2, y + catchBasketH / 2);
+    ctx.restore();
+  }
+
+  function drawCatchGame() {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.save();
+    if (catchShake > 0) {
+      const dx = (Math.random() - 0.5) * 8;
+      const dy = (Math.random() - 0.5) * 8;
+      ctx.translate(dx, dy);
+    }
+
+    // Background gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#16122d'); grad.addColorStop(1, '#331d56');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Stars / dots
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    for (let i = 0; i < 18; i++) {
+      ctx.fillRect((i * 47) % 345, (i * 73) % 400, 2, 2);
+    }
+
+    // Draw basket
+    drawCatchBasket(ctx, catchBasketX, 470 - 45);
+
+    // Draw falling items
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let it of catchItems) {
+      ctx.font = '26px sans-serif';
+      ctx.fillText(it.emoji, it.x, it.y);
+    }
+
+    // Floating text
+    for (let f of catchFloats) {
+      ctx.save();
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillStyle = f.color;
+      ctx.globalAlpha = Math.max(0, f.life / 25);
+      ctx.fillText(f.text, f.x, f.y);
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  function endCatchGame() {
+    stopCatchGame();
+    playArcadeSound('over');
+    const isNewRecord = saveArcadeHighScore('catch', catchScore);
+    if (isNewRecord) playArcadeSound('win');
+
+    const overlay = document.getElementById('canvasOverlay');
+    overlay.style.display = 'flex';
+    document.getElementById('overlayIcon').textContent = isNewRecord ? '🏆' : '💀';
+    document.getElementById('overlayTitle').textContent = isNewRecord ? 'สถิติใหม่สุดยอด!' : 'จบเกม!';
+    document.getElementById('overlaySub').textContent = 'พลังชีวิตหมดแล้ว คะแนนที่คุณทำได้คือ:';
+    document.getElementById('overlayScoreBox').style.display = 'block';
+    document.getElementById('overlayFinalScore').textContent = catchScore;
+    document.getElementById('overlayRecordNotice').style.display = isNewRecord ? 'block' : 'none';
+    document.getElementById('overlayActionBtn').textContent = '🔄 เล่นใหม่อีกรอบ';
+    document.getElementById('hudVal3').textContent = localStorage.getItem('mk_hs_catch') || '0';
+  }
+
+  // ----------------------------------------------------
+  // GAME 2: 🚀 FLAPPY MIKI (บินหลบเสา เก็บเหรียญ)
+  // ----------------------------------------------------
+  let flappyAnimId = null;
+  let flappyScore = 0;
+  let flappyX = 65;
+  let flappyY = 200;
+  let flappyVel = 0;
+  const flappyGravity = 0.38;
+  const flappyJump = -6.4;
+  let flappyPipes = [];
+  let flappyFloats = [];
+  let flappyTick = 0;
+  let flappyIsRunning = false;
+  let flappyListenersBound = false;
+
+  function bindFlappyControls() {
+    if (flappyListenersBound) return;
+    flappyListenersBound = true;
+    const canvas = document.getElementById('gameCanvas');
+
+    const doJump = (e) => {
+      if (currentArcadeGame !== 'flappy' || !flappyIsRunning) return;
+      if (e && e.cancelable) e.preventDefault();
+      flappyVel = flappyJump;
+      playArcadeSound('jump');
+    };
+
+    canvas.addEventListener('pointerdown', doJump, {passive: false});
+    window.addEventListener('keydown', (e) => {
+      if (currentArcadeGame === 'flappy' && flappyIsRunning) {
+        if (e.code === 'Space' || e.key === ' ' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          doJump();
+        }
+      }
+    });
+  }
+
+  function startFlappyGame() {
+    stopAllArcadeGames();
+    currentArcadeGame = 'flappy';
+    document.getElementById('arcadeHub').style.display = 'none';
+    document.getElementById('arcadeStage').style.display = 'flex';
+    document.getElementById('canvasWrap').style.display = 'flex';
+    document.getElementById('whackStageWrap').style.display = 'none';
+
+    document.getElementById('stageGameTitle').textContent = '🚀 Flappy Miki';
+    document.getElementById('hudLabel1').textContent = 'คะแนน:';
+    document.getElementById('hudVal1').textContent = '0';
+    document.getElementById('hudLabel2').textContent = 'สถานะ:';
+    document.getElementById('hudVal2').textContent = 'พร้อมบิน 🚀';
+    document.getElementById('hudLabel3').textContent = 'สูงสุด:';
+    document.getElementById('hudVal3').textContent = localStorage.getItem('mk_hs_flappy') || '0';
+
+    const overlay = document.getElementById('canvasOverlay');
+    overlay.style.display = 'flex';
+    document.getElementById('overlayIcon').textContent = '🚀';
+    document.getElementById('overlayTitle').textContent = 'Flappy Miki';
+    document.getElementById('overlaySub').textContent = 'แตะหน้าจอ หรือกด Spacebar เพื่อบินรอดท่อและเก็บเหรียญทอง 🪙';
+    document.getElementById('overlayScoreBox').style.display = 'none';
+    document.getElementById('overlayActionBtn').textContent = '▶️ เริ่มบินเลย';
+
+    bindFlappyControls();
+    drawFlappyIdle();
+  }
+
+  function initFlappyGame() {
+    document.getElementById('canvasOverlay').style.display = 'none';
+    flappyScore = 0;
+    flappyY = 200;
+    flappyVel = flappyJump;
+    flappyPipes = [];
+    flappyFloats = [];
+    flappyTick = 0;
+    flappyIsRunning = true;
+    document.getElementById('hudVal1').textContent = '0';
+    document.getElementById('hudVal2').textContent = 'กำลังบิน 🚀';
+
+    cancelAnimationFrame(flappyAnimId);
+    loopFlappyGame();
+  }
+
+  function stopFlappyGame() {
+    flappyIsRunning = false;
+    cancelAnimationFrame(flappyAnimId);
+  }
+
+  function loopFlappyGame() {
+    if (currentArcadeGame !== 'flappy' || !flappyIsRunning) return;
+    updateFlappyGame();
+    drawFlappyGame();
+    if (flappyIsRunning) {
+      flappyAnimId = requestAnimationFrame(loopFlappyGame);
+    }
+  }
+
+  function updateFlappyGame() {
+    flappyTick++;
+    flappyVel += flappyGravity;
+    flappyY += flappyVel;
+
+    // Ceiling / Ground collision
+    if (flappyY <= 14) {
+      flappyY = 14;
+      flappyVel = 0;
+    }
+    if (flappyY >= 470 - 36) {
+      endFlappyGame();
+      return;
+    }
+
+    // Spawn pipes every 95 frames (~1.6s)
+    if (flappyTick % 95 === 0) {
+      const gap = 135;
+      const topHeight = 60 + Math.random() * (470 - gap - 140);
+      flappyPipes.push({
+        x: 350,
+        width: 52,
+        topHeight: topHeight,
+        bottomY: topHeight + gap,
+        passed: false,
+        hasCoin: Math.random() > 0.45,
+        coinY: topHeight + gap / 2,
+        coinCollected: false
+      });
+    }
+
+    const birdRadius = 14;
+    for (let i = flappyPipes.length - 1; i >= 0; i--) {
+      const p = flappyPipes[i];
+      p.x -= 2.4;
+
+      // Pipe passed score
+      if (!p.passed && p.x + p.width < flappyX) {
+        p.passed = true;
+        flappyScore += 10;
+        playArcadeSound('coin');
+        document.getElementById('hudVal1').textContent = flappyScore;
+      }
+
+      // Coin collection inside gap
+      if (p.hasCoin && !p.coinCollected) {
+        const dist = Math.hypot(flappyX - (p.x + p.width / 2), flappyY - p.coinY);
+        if (dist < birdRadius + 14) {
+          p.coinCollected = true;
+          flappyScore += 20;
+          playArcadeSound('combo');
+          flappyFloats.push({text: '+20 🪙', x: p.x + p.width / 2, y: p.coinY - 10, life: 25});
+          document.getElementById('hudVal1').textContent = flappyScore;
+        }
+      }
+
+      // Collision check with pipes
+      const margin = 4;
+      if (flappyX + birdRadius - margin > p.x && flappyX - birdRadius + margin < p.x + p.width) {
+        if (flappyY - birdRadius + margin < p.topHeight || flappyY + birdRadius - margin > p.bottomY) {
+          endFlappyGame();
+          return;
+        }
+      }
+
+      // Remove offscreen pipes
+      if (p.x + p.width < -20) {
+        flappyPipes.splice(i, 1);
+      }
+    }
+
+    // Update floats
+    for (let i = flappyFloats.length - 1; i >= 0; i--) {
+      flappyFloats[i].y -= 1.2;
+      flappyFloats[i].life--;
+      if (flappyFloats[i].life <= 0) flappyFloats.splice(i, 1);
+    }
+  }
+
+  function drawFlappyIdle() {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#1a1440'); grad.addColorStop(1, '#51327c');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawFlappyBird(ctx, flappyX, 200, 0);
+  }
+
+  function drawFlappyBird(ctx, x, y, angle) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🚀', 0, 0);
+    ctx.restore();
+  }
+
+  function drawFlappyGame() {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Background gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#100d2b'); grad.addColorStop(0.7, '#2f1a56'); grad.addColorStop(1, '#532b7a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Stars
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    for (let i = 0; i < 20; i++) {
+      ctx.fillRect((i * 53) % 345, (i * 61) % 380, 2, 2);
+    }
+
+    // Draw pipes
+    for (let p of flappyPipes) {
+      // Top pipe
+      const pipeGrad = ctx.createLinearGradient(p.x, 0, p.x + p.width, 0);
+      pipeGrad.addColorStop(0, '#7c5cff'); pipeGrad.addColorStop(1, '#a46bff');
+      ctx.fillStyle = pipeGrad;
+      ctx.beginPath();
+      ctx.roundRect(p.x, 0, p.width, p.topHeight, [0, 0, 10, 10]);
+      ctx.fill();
+
+      // Bottom pipe
+      ctx.beginPath();
+      ctx.roundRect(p.x, p.bottomY, p.width, 470 - p.bottomY, [10, 10, 0, 0]);
+      ctx.fill();
+
+      // Coin in gap
+      if (p.hasCoin && !p.coinCollected) {
+        ctx.font = '22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🪙', p.x + p.width / 2, p.coinY);
+      }
+    }
+
+    // Ground platform
+    ctx.fillStyle = '#221538';
+    ctx.fillRect(0, 470 - 24, canvas.width, 24);
+    ctx.fillStyle = '#ff6b9a';
+    ctx.fillRect(0, 470 - 24, canvas.width, 3);
+
+    // Draw bird with tilt
+    const angle = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, flappyVel * 0.08));
+    drawFlappyBird(ctx, flappyX, flappyY, angle);
+
+    // Draw floats
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let f of flappyFloats) {
+      ctx.save();
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillStyle = '#ffd166';
+      ctx.globalAlpha = Math.max(0, f.life / 25);
+      ctx.fillText(f.text, f.x, f.y);
+      ctx.restore();
+    }
+  }
+
+  function endFlappyGame() {
+    stopFlappyGame();
+    playArcadeSound('bomb');
+    setTimeout(() => playArcadeSound('over'), 150);
+    const isNewRecord = saveArcadeHighScore('flappy', flappyScore);
+    if (isNewRecord) setTimeout(() => playArcadeSound('win'), 400);
+
+    const overlay = document.getElementById('canvasOverlay');
+    overlay.style.display = 'flex';
+    document.getElementById('overlayIcon').textContent = isNewRecord ? '🏆' : '💥';
+    document.getElementById('overlayTitle').textContent = isNewRecord ? 'สถิติใหม่ยอดเยี่ยม!' : 'ชนแล้ว!';
+    document.getElementById('overlaySub').textContent = 'บินหลบเสาได้คะแนนทั้งหมด:';
+    document.getElementById('overlayScoreBox').style.display = 'block';
+    document.getElementById('overlayFinalScore').textContent = flappyScore;
+    document.getElementById('overlayRecordNotice').style.display = isNewRecord ? 'block' : 'none';
+    document.getElementById('overlayActionBtn').textContent = '🔄 บินใหม่อีกรอบ';
+    document.getElementById('hudVal2').textContent = 'ตกแล้ว 💥';
+    document.getElementById('hudVal3').textContent = localStorage.getItem('mk_hs_flappy') || '0';
+  }
+
+  // ----------------------------------------------------
+  // GAME 3: 🔨 WHACK FRENZY (ทุบตัวตุ่นสายฟ้า)
+  // ----------------------------------------------------
+  let whackScore = 0;
+  let whackCombo = 0;
+  let whackMaxCombo = 1;
+  let whackTimeLeft = 30;
+  let whackTimerInt = null;
+  let whackSpawnInt = null;
+  let whackActiveHoles = {}; // index -> {type, pts, timeoutId}
+
+  function startWhackGame() {
+    stopAllArcadeGames();
+    currentArcadeGame = 'whack';
+    document.getElementById('arcadeHub').style.display = 'none';
+    document.getElementById('arcadeStage').style.display = 'flex';
+    document.getElementById('canvasWrap').style.display = 'none';
+    document.getElementById('whackStageWrap').style.display = 'flex';
+
+    document.getElementById('stageGameTitle').textContent = '🔨 Whack Frenzy';
+    document.getElementById('hudLabel1').textContent = 'คะแนน:';
+    document.getElementById('hudVal1').textContent = '0';
+    document.getElementById('hudLabel2').textContent = 'เวลา:';
+    document.getElementById('hudVal2').textContent = '⏱️ 30s';
+    document.getElementById('hudLabel3').textContent = 'สูงสุด:';
+    document.getElementById('hudVal3').textContent = localStorage.getItem('mk_hs_whack') || '0';
+
+    buildWhackBoard();
+
+    const overlay = document.getElementById('whackOverlay');
+    overlay.style.display = 'flex';
+    document.getElementById('whackOverlayIcon').textContent = '🔨';
+    document.getElementById('whackOverlayTitle').textContent = 'Whack Frenzy';
+    document.getElementById('whackOverlaySub').textContent = 'จิ้มทุบตัวตุ่น 🐹, แมว 🐱, เหรียญ 🪙 และมงกุฎ 👑 ระวังระเบิด 💣!';
+    document.getElementById('whackScoreBox').style.display = 'none';
+    document.getElementById('whackActionBtn').textContent = '▶️ เริ่มทุบเลย (30 วิ)';
+  }
+
+  function buildWhackBoard() {
+    const board = document.getElementById('whackBoard');
+    if (!board) return;
+    board.innerHTML = '';
+    whackActiveHoles = {};
+
+    for (let i = 0; i < 9; i++) {
+      const wrap = document.createElement('div');
+      wrap.className = 'whack-hole-wrap';
+      wrap.id = 'whackHole' + i;
+      wrap.onclick = () => onWhackHoleHit(i);
+
+      const target = document.createElement('div');
+      target.className = 'whack-target';
+      target.id = 'whackTarget' + i;
+
+      const rim = document.createElement('div');
+      rim.className = 'whack-hole-rim';
+
+      wrap.appendChild(target);
+      wrap.appendChild(rim);
+      board.appendChild(wrap);
+    }
+  }
+
+  function initWhackGame() {
+    document.getElementById('whackOverlay').style.display = 'none';
+    whackScore = 0;
+    whackCombo = 0;
+    whackMaxCombo = 1;
+    whackTimeLeft = 30;
+    whackActiveHoles = {};
+
+    document.getElementById('hudVal1').textContent = '0';
+    document.getElementById('hudVal2').textContent = '⏱️ 30s';
+    document.getElementById('hudVal3').textContent = localStorage.getItem('mk_hs_whack') || '0';
+
+    clearInterval(whackTimerInt);
+    clearInterval(whackSpawnInt);
+
+    whackTimerInt = setInterval(() => {
+      whackTimeLeft--;
+      document.getElementById('hudVal2').textContent = '⏱️ ' + whackTimeLeft + 's';
+      if (whackTimeLeft <= 0) {
+        endWhackGame();
+      }
+    }, 1000);
+
+    whackSpawnInt = setInterval(spawnWhackTarget, 620);
+    spawnWhackTarget();
+  }
+
+  function stopWhackGame() {
+    clearInterval(whackTimerInt);
+    clearInterval(whackSpawnInt);
+    Object.keys(whackActiveHoles).forEach(idx => {
+      clearTimeout(whackActiveHoles[idx].timeoutId);
+      const el = document.getElementById('whackTarget' + idx);
+      if (el) el.className = 'whack-target';
+    });
+    whackActiveHoles = {};
+  }
+
+  function spawnWhackTarget() {
+    if (currentArcadeGame !== 'whack' || whackTimeLeft <= 0) return;
+    const available = [];
+    for (let i = 0; i < 9; i++) {
+      if (!whackActiveHoles[i]) available.push(i);
+    }
+    if (!available.length) return;
+
+    const idx = available[Math.floor(Math.random() * available.length)];
+    const r = Math.random();
+    let type = 'mole';
+    let pts = 10;
+    let emoji = '🐹';
+    let duration = 900;
+
+    if (r < 0.45) {
+      type = 'mole'; pts = 10; emoji = '🐹'; duration = 900;
+    } else if (r < 0.65) {
+      type = 'cat'; pts = 15; emoji = '🐱'; duration = 850;
+    } else if (r < 0.80) {
+      type = 'coin'; pts = 25; emoji = '🪙'; duration = 800;
+    } else if (r < 0.88) {
+      type = 'king'; pts = 50; emoji = '👑'; duration = 650;
+    } else {
+      type = 'bomb'; pts = -20; emoji = '💣'; duration = 950;
+    }
+
+    const targetEl = document.getElementById('whackTarget' + idx);
+    if (!targetEl) return;
+    targetEl.textContent = emoji;
+    targetEl.className = 'whack-target up';
+
+    const timeoutId = setTimeout(() => {
+      if (whackActiveHoles[idx] && !whackActiveHoles[idx].hit) {
+        targetEl.className = 'whack-target';
+        delete whackActiveHoles[idx];
+      }
+    }, duration);
+
+    whackActiveHoles[idx] = {type, pts, emoji, timeoutId, hit: false};
+  }
+
+  function onWhackHoleHit(idx) {
+    if (currentArcadeGame !== 'whack' || whackTimeLeft <= 0) return;
+    const active = whackActiveHoles[idx];
+    if (!active || active.hit) return;
+    active.hit = true;
+    clearTimeout(active.timeoutId);
+
+    const targetEl = document.getElementById('whackTarget' + idx);
+    const wrapEl = document.getElementById('whackHole' + idx);
+    targetEl.classList.add('hit');
+
+    let pointsEarned = 0;
+    let mult = 1;
+
+    if (active.type === 'bomb') {
+      whackCombo = 0;
+      pointsEarned = -20;
+      whackScore = Math.max(0, whackScore - 20);
+      playArcadeSound('bomb');
+      showWhackFloatText(wrapEl, '💥 BOOM! -20', '#ff4d4d');
+    } else {
+      whackCombo++;
+      if (whackCombo > whackMaxCombo) whackMaxCombo = whackCombo;
+      mult = whackCombo >= 8 ? 5 : whackCombo >= 5 ? 3 : whackCombo >= 3 ? 2 : 1;
+      pointsEarned = active.pts * mult;
+      whackScore += pointsEarned;
+      if (mult > 1) playArcadeSound('combo');
+      else playArcadeSound('whack');
+      showWhackFloatText(wrapEl, `+${pointsEarned} ${mult > 1 ? '🔥x' + mult : ''}`, mult > 1 ? '#ff9a44' : '#22c58b');
+    }
+
+    document.getElementById('hudVal1').textContent = whackScore;
+    setTimeout(() => {
+      targetEl.className = 'whack-target';
+      delete whackActiveHoles[idx];
+    }, 140);
+  }
+
+  function showWhackFloatText(container, text, color) {
+    if (!container) return;
+    const pop = document.createElement('div');
+    pop.className = 'whack-pop-text';
+    pop.style.color = color;
+    pop.textContent = text;
+    container.appendChild(pop);
+    setTimeout(() => pop.remove(), 600);
+  }
+
+  function endWhackGame() {
+    stopWhackGame();
+    playArcadeSound('win');
+    const isNewRecord = saveArcadeHighScore('whack', whackScore);
+
+    const overlay = document.getElementById('whackOverlay');
+    overlay.style.display = 'flex';
+    document.getElementById('whackOverlayIcon').textContent = isNewRecord ? '🏆' : '⏰';
+    document.getElementById('whackOverlayTitle').textContent = isNewRecord ? 'สถิติใหม่สุดยอด!' : 'หมดเวลาแล้ว!';
+    document.getElementById('whackOverlaySub').textContent = 'เวลา 30 วินาทีสิ้นสุดลง คะแนนที่คุณทำได้:';
+    document.getElementById('whackScoreBox').style.display = 'block';
+    document.getElementById('whackFinalScore').textContent = whackScore;
+    document.getElementById('whackFinalCombo').textContent = 'คอมโบสูงสุด: 🔥 x' + whackMaxCombo;
+    document.getElementById('whackRecordNotice').style.display = isNewRecord ? 'block' : 'none';
+    document.getElementById('whackActionBtn').textContent = '🔄 ทุบใหม่อีกรอบ (30 วิ)';
+    document.getElementById('hudVal3').textContent = localStorage.getItem('mk_hs_whack') || '0';
   }
 
   checkAutoLogin();
